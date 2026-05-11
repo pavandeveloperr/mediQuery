@@ -13,6 +13,8 @@ model User {
   email     String     @unique
   name      String?
   image     String?
+  accounts  Account[]  
+  sessions  Session[]      
   documents Document[]
   queries   Query[]
   createdAt DateTime   @default(now())
@@ -43,8 +45,10 @@ model Chunk {
   tokenCount Int?
   documentId String
   document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  embedding  Unsupported("vector")?
   createdAt  DateTime @default(now())
 
+  @@index([embedding])
   @@map("chunks")
 }
 
@@ -75,4 +79,42 @@ model EvalResult {
   createdAt     DateTime @default(now())
 
   @@map("eval_results")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
 }
