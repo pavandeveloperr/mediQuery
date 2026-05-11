@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  name      String?
+  image     String?
+  documents Document[]
+  queries   Query[]
+  createdAt DateTime   @default(now())
+
+  @@map("users")
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  name        String
+  storagePath String
+  fileSize    Int?
+  pageCount   Int?
+  status      String   @default("processing")
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chunks      Chunk[]
+  queries     Query[]
+  createdAt   DateTime @default(now())
+
+  @@map("documents")
+}
+
+model Chunk {
+  id         String   @id @default(cuid())
+  content    String
+  chunkIndex Int
+  tokenCount Int?
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@map("chunks")
+}
+
+model Query {
+  id         String   @id @default(cuid())
+  question   String
+  answer     String
+  confidence Float
+  tokenCount Int      @default(0)
+  costUsd    Float    @default(0)
+  agentSteps Json     @default("[]")
+  sources    Json     @default("[]")
+  userId     String
+  documentId String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@map("queries")
+}
+
+model EvalResult {
+  id            String   @id @default(cuid())
+  faithfulness  Float
+  relevance     Float
+  precision     Float
+  questionCount Int
+  createdAt     DateTime @default(now())
+
+  @@map("eval_results")
+}
