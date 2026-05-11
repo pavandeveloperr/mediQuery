@@ -9,15 +9,16 @@ datasource db {
 }
 
 model User {
-  id        String     @id @default(cuid())
-  email     String     @unique
-  name      String?
-  image     String?
-  accounts  Account[]  
-  sessions  Session[]      
-  documents Document[]
-  queries   Query[]
-  createdAt DateTime   @default(now())
+  id            String     @id @default(cuid())
+  email         String     @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
+  accounts      Account[]  
+  sessions      Session[]      
+  documents     Document[]
+  queries       Query[]
+  createdAt     DateTime   @default(now())
 
   @@map("users")
 }
