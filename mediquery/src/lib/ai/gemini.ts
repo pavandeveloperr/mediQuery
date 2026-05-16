@@ -8,10 +8,14 @@ import {
 
 const client = new GoogleGenerativeAI(env.geminiApiKey)
 
-export const geminiModel = client.getGenerativeModel({ model: GEMINI_GENERATION_MODEL })
+// Generation models (gemini-1.5-flash, gemini-1.5-pro, etc.) were moved to the
+// v1 endpoint. The SDK defaults to v1beta, so we override via RequestOptions.
+export const geminiModel = client.getGenerativeModel(
+  { model: GEMINI_GENERATION_MODEL },
+  { apiVersion: 'v1' }
+)
 
-// outputDimensionality uses Matryoshka truncation to stay within the
-// pgvector(768) column without requiring a schema migration.
+// gemini-embedding-001 still works on v1beta (the SDK default) — no override needed.
 export const embeddingModel = client.getGenerativeModel({ model: GEMINI_EMBEDDING_MODEL })
 
 export { EMBEDDING_DIMENSIONS }
