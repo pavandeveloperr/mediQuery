@@ -10,17 +10,26 @@ export const geminiModel = client.getGenerativeModel({
   model: 'gemini-1.5-pro',
 })
 
+// text-embedding-004 was retired — gemini-embedding-001 is current stable.
+// outputDimensionality: 768 uses Matryoshka truncation to stay within the
+// pgvector(768) column without requiring a DB migration.
 export const embeddingModel = client.getGenerativeModel({
-  model: 'text-embedding-004',
+  model: 'gemini-embedding-001',
 })
+
+export const EMBEDDING_DIMENSIONS = 768
 
 export async function embedText(text: string): Promise<number[]> {
   try {
-    const result = await embeddingModel.embedContent(text)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await embeddingModel.embedContent({
+      content: { parts: [{ text }], role: 'user' },
+      outputDimensionality: EMBEDDING_DIMENSIONS,
+    } as any)
     const embedding = result.embedding.values
 
-    if (!embedding || embedding.length !== 768) {
-      throw new Error(`Expected 768-dimensional embedding, got ${embedding?.length || 0}`)
+    if (!embedding || embedding.length !== EMBEDDING_DIMENSIONS) {
+      throw new Error(`Expected ${EMBEDDING_DIMENSIONS}-dimensional embedding, got ${embedding?.length ?? 0}`)
     }
 
     return embedding

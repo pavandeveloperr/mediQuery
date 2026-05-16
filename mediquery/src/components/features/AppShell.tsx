@@ -125,7 +125,7 @@ export default function AppShell({ userName, userEmail, userImage }: Props) {
   }, [])
 
   const handleUploadFile = useCallback(async (file: File) => {
-    // Optimistic entry while the API processes the upload
+    // Show a processing entry immediately so the user sees feedback during embedding
     const tempId = `temp-${Date.now()}`
     setDocuments((prev) => [
       { id: tempId, name: file.name, status: 'processing', uploadedAt: new Date().toISOString().split('T')[0] },
@@ -136,6 +136,7 @@ export default function AppShell({ userName, userEmail, userImage }: Props) {
       const form = new FormData()
       form.append('file', file)
 
+      // Upload is now synchronous — the response arrives once embedding is complete
       const res = await fetch('/api/documents/upload', { method: 'POST', body: form })
 
       if (!res.ok) {
@@ -143,16 +144,28 @@ export default function AppShell({ userName, userEmail, userImage }: Props) {
         throw new Error((body as { error?: string }).error ?? 'Upload failed')
       }
 
-      // Remove optimistic entry; the next poll will surface the real record
-      setDocuments((prev) => prev.filter((d) => d.id !== tempId))
-      await fetchDocuments()
+      const doc = await res.json() as { id: string; name: string; status: string; pageCount: number | null; createdAt: string }
+
+      // Replace temp entry with the real ready document
+      setDocuments((prev) => [
+        {
+          id: doc.id,
+          name: doc.name,
+          status: doc.status as 'ready',
+          uploadedAt: new Date(doc.createdAt).toISOString().split('T')[0],
+          pageCount: doc.pageCount ?? undefined,
+        },
+        ...prev.filter((d) => d.id !== tempId),
+      ])
+      // Auto-select if nothing is already selected
+      setSelectedDocId((prev) => prev ?? doc.id)
     } catch (error) {
       console.error('[AppShell] upload error:', error)
       setDocuments((prev) =>
         prev.map((d) => (d.id === tempId ? { ...d, status: 'failed' as const } : d))
       )
     }
-  }, [fetchDocuments])
+  }, [])
 
   // ── Phase 3 placeholder: query submission ───────────────────────────────────
   // simulateStream is replaced by SSE fetch to POST /api/query in Phase 3.

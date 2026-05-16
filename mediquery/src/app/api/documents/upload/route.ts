@@ -28,7 +28,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'File exceeds the 15 MB limit' }, { status: 400 })
     }
 
-    // Create the document record immediately so the frontend can track it
     const document = await prisma.document.create({
       data: {
         name: file.name,
@@ -39,23 +38,35 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Read file into buffer before starting background processing
     const buffer = Buffer.from(await file.arrayBuffer())
 
-    // Fire-and-forget processing — works in Node.js dev server
-    // On Vercel, wrap this in waitUntil() when deploying to production
-    void processDocument(document.id, buffer).catch(async (error) => {
-      console.error(`[upload] Processing failed for ${document.id}:`, error)
+    // Process synchronously — surfaces real errors in the HTTP response
+    // and avoids silent fire-and-forget failures
+    try {
+      await processDocument(document.id, buffer)
+    } catch (processingError) {
+      const message =
+        processingError instanceof Error ? processingError.message : 'Unknown processing error'
+
+      console.error(`[upload] Processing failed for ${document.id}:`, processingError)
+
       await prisma.document.update({
         where: { id: document.id },
         data: { status: 'failed' },
-      }).catch(() => undefined)
+      })
+
+      return NextResponse.json(
+        { error: `Processing failed: ${message}`, documentId: document.id },
+        { status: 422 }
+      )
+    }
+
+    const updated = await prisma.document.findUnique({
+      where: { id: document.id },
+      select: { id: true, name: true, status: true, pageCount: true, createdAt: true },
     })
 
-    return NextResponse.json(
-      { id: document.id, name: document.name, status: 'processing' },
-      { status: 202 }
-    )
+    return NextResponse.json(updated, { status: 200 })
   } catch (error) {
     console.error('[POST /api/documents/upload]', error)
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
@@ -68,7 +79,7 @@ async function processDocument(documentId: string, buffer: Buffer): Promise<void
   const chunks = extractChunks(text)
 
   if (!validateChunks(chunks)) {
-    throw new Error('Chunk validation failed — no usable text segments produced')
+    throw new Error('No usable text segments could be extracted from this PDF')
   }
 
   await embedAndStoreChunks(chunks, documentId)

@@ -49,7 +49,6 @@ model Chunk {
   embedding  Unsupported("vector")?
   createdAt  DateTime @default(now())
 
-  @@index([embedding])
   @@map("chunks")
 }
 
