@@ -1,7 +1,7 @@
 // Confirmed via ListModels API — only these models exist on this API key.
 // gemini-1.5-flash / gemini-1.5-pro do NOT exist on this key at all.
 export const GEMINI_EMBEDDING_MODEL = 'gemini-embedding-001'
-export const GEMINI_GENERATION_MODEL = 'gemini-2.0-flash-lite'
+export const GEMINI_GENERATION_MODEL = 'gemini-2.5-flash'
 export const EMBEDDING_DIMENSIONS = 768
 
 export const CHUNK_SIZE_CHARS = 512
