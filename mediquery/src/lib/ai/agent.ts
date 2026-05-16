@@ -73,20 +73,33 @@ export async function runAgent(
         timestamp: new Date().toISOString(),
       })
 
-      const reformulated = await generateText(buildReformulationPrompt(question))
-      effectiveQuery = reformulated.trim()
+      try {
+        const reformulated = await generateText(buildReformulationPrompt(question))
+        effectiveQuery = reformulated.trim()
 
-      const retry = await retrieveChunks(effectiveQuery, documentId)
-      confidenceScore = retry.avgSimilarity
-      citations = retry.chunks
+        const retry = await retrieveChunks(effectiveQuery, documentId)
+        confidenceScore = retry.avgSimilarity
+        citations = retry.chunks
 
-      steps.push({
-        thought: `Re-querying with reformulated query: "${effectiveQuery}"`,
-        action: 'RETRIEVE',
-        queryUsed: effectiveQuery,
-        scoreAchieved: confidenceScore,
-        timestamp: new Date().toISOString(),
-      })
+        steps.push({
+          thought: `Re-querying with reformulated query: "${effectiveQuery}"`,
+          action: 'RETRIEVE',
+          queryUsed: effectiveQuery,
+          scoreAchieved: confidenceScore,
+          timestamp: new Date().toISOString(),
+        })
+      } catch (reformError) {
+        // Reformulation failed (e.g. rate limit) — proceed with original retrieval results
+        // rather than failing the entire query.
+        console.error('[runAgent] Reformulation failed, using original results:', reformError)
+        steps.push({
+          thought: 'Reformulation unavailable — proceeding with original retrieval results.',
+          action: 'RETRIEVE',
+          queryUsed: effectiveQuery,
+          scoreAchieved: confidenceScore,
+          timestamp: new Date().toISOString(),
+        })
+      }
     }
 
     // ── Step 3: Answer or fail ────────────────────────────────────────────────

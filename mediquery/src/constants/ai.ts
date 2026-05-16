@@ -1,7 +1,7 @@
-// Both gemini-1.5-pro and text-embedding-004 were moved to v1 endpoint only.
-// The SDK (@google/generative-ai) defaults to v1beta, so we use models that
-// are still available there: gemini-2.0-flash + gemini-embedding-001.
-export const GEMINI_GENERATION_MODEL = 'gemini-2.0-flash'
+// gemini-1.5-pro → v1 only (404 on v1beta)
+// gemini-2.0-flash → requires paid plan (limit: 0 on free tier)
+// gemini-1.5-flash → correct free-tier generation model on v1beta
+export const GEMINI_GENERATION_MODEL = 'gemini-1.5-flash'
 export const GEMINI_EMBEDDING_MODEL = 'gemini-embedding-001'
 export const EMBEDDING_DIMENSIONS = 768
 
