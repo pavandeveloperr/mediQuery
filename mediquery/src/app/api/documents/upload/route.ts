@@ -45,31 +45,27 @@ export async function POST(request: NextRequest) {
 
     const buffer = Buffer.from(await file.arrayBuffer())
 
-    try {
-      await ingestDocument(document.id, buffer)
-    } catch (processingError) {
-      const message =
-        processingError instanceof Error ? processingError.message : 'Unknown processing error'
-
-      console.error(`[POST /api/documents/upload] Ingestion failed for ${document.id}:`, processingError)
-
-      await prisma.document.update({
-        where: { id: document.id },
-        data: { status: DOCUMENT_STATUS.FAILED },
-      })
-
-      return NextResponse.json(
-        { error: `Processing failed: ${message}`, documentId: document.id },
-        { status: 422 }
+    // Fire-and-forget: return 202 immediately so Vercel's 10s serverless timeout
+    // is never hit. The useDocuments hook polls /api/documents every 3s and picks
+    // up the status change when ingestion finishes.
+    // TODO: on Vercel production, wrap with `waitUntil` from @vercel/functions
+    // so the background work is not killed when the response is flushed.
+    void ingestDocument(document.id, buffer).catch(async (processingError) => {
+      console.error(
+        `[POST /api/documents/upload] Ingestion failed for ${document.id}:`,
+        processingError
       )
-    }
-
-    const updated = await prisma.document.findUnique({
-      where: { id: document.id },
-      select: { id: true, name: true, status: true, pageCount: true, createdAt: true },
+      try {
+        await prisma.document.update({
+          where: { id: document.id },
+          data: { status: DOCUMENT_STATUS.FAILED },
+        })
+      } catch (dbError) {
+        console.error('[POST /api/documents/upload] Failed to set status=failed:', dbError)
+      }
     })
 
-    return NextResponse.json(updated, { status: 200 })
+    return NextResponse.json(document, { status: 202 })
   } catch (error) {
     console.error('[POST /api/documents/upload]', error)
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
