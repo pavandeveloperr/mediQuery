@@ -1,27 +1,28 @@
+import { CHUNK_SIZE_CHARS, CHUNK_OVERLAP_CHARS } from '@/constants/ai'
+
 export interface ExtractedChunk {
   content: string
   chunkIndex: number
   tokenCount: number
 }
 
-const CHUNK_SIZE = 512
-const OVERLAP_SIZE = 50
+export interface ChunkWithEmbedding extends ExtractedChunk {
+  embedding: number[]
+}
 
 function estimateTokenCount(text: string): number {
   return Math.ceil(text.length / 4)
 }
 
 export function extractChunks(text: string): ExtractedChunk[] {
-  if (!text || text.trim().length === 0) {
-    return []
-  }
+  if (!text || text.trim().length === 0) return []
 
   const chunks: ExtractedChunk[] = []
   let chunkIndex = 0
   let startIndex = 0
 
   while (startIndex < text.length) {
-    const endIndex = Math.min(startIndex + CHUNK_SIZE, text.length)
+    const endIndex = Math.min(startIndex + CHUNK_SIZE_CHARS, text.length)
     const chunkContent = text.slice(startIndex, endIndex)
 
     if (chunkContent.trim().length > 0) {
@@ -30,27 +31,20 @@ export function extractChunks(text: string): ExtractedChunk[] {
         chunkIndex,
         tokenCount: estimateTokenCount(chunkContent),
       })
-
       chunkIndex++
     }
 
-    if (endIndex === text.length) {
-      break
-    }
+    if (endIndex === text.length) break
 
-    startIndex = Math.max(startIndex + CHUNK_SIZE - OVERLAP_SIZE, startIndex + 1)
+    startIndex = Math.max(startIndex + CHUNK_SIZE_CHARS - CHUNK_OVERLAP_CHARS, startIndex + 1)
   }
 
   return chunks
 }
 
-export interface ChunkWithEmbedding extends ExtractedChunk {
-  embedding: number[]
-}
-
 export function validateChunks(chunks: ExtractedChunk[]): boolean {
   if (!Array.isArray(chunks) || chunks.length === 0) {
-    console.warn('[validateChunks] No chunks to validate')
+    console.error('[validateChunks] No chunks to validate')
     return false
   }
 

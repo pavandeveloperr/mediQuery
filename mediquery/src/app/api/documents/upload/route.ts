@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
-import { extractPDFText } from '@/lib/utils/pdf'
-import { extractChunks, validateChunks } from '@/lib/ai/chunker'
-import { embedAndStoreChunks } from '@/lib/ai/embeddings'
-
-const MAX_FILE_SIZE = 15 * 1024 * 1024 // 15 MB
+import { ingestDocument } from '@/lib/ai/ingest'
+import {
+  MAX_FILE_SIZE_BYTES,
+  MAX_FILE_SIZE_MB,
+  ACCEPTED_MIME_TYPE,
+  DOCUMENT_STATUS,
+} from '@/constants/documents'
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,11 +23,14 @@ export async function POST(request: NextRequest) {
     if (!(file instanceof File)) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
-    if (file.type !== 'application/pdf') {
+    if (file.type !== ACCEPTED_MIME_TYPE) {
       return NextResponse.json({ error: 'Only PDF files are accepted' }, { status: 400 })
     }
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: 'File exceeds the 15 MB limit' }, { status: 400 })
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      return NextResponse.json(
+        { error: `File exceeds the ${MAX_FILE_SIZE_MB} MB limit` },
+        { status: 400 }
+      )
     }
 
     const document = await prisma.document.create({
@@ -33,26 +38,24 @@ export async function POST(request: NextRequest) {
         name: file.name,
         storagePath: '',
         fileSize: file.size,
-        status: 'processing',
+        status: DOCUMENT_STATUS.PROCESSING,
         userId: session.user.id,
       },
     })
 
     const buffer = Buffer.from(await file.arrayBuffer())
 
-    // Process synchronously — surfaces real errors in the HTTP response
-    // and avoids silent fire-and-forget failures
     try {
-      await processDocument(document.id, buffer)
+      await ingestDocument(document.id, buffer)
     } catch (processingError) {
       const message =
         processingError instanceof Error ? processingError.message : 'Unknown processing error'
 
-      console.error(`[upload] Processing failed for ${document.id}:`, processingError)
+      console.error(`[POST /api/documents/upload] Ingestion failed for ${document.id}:`, processingError)
 
       await prisma.document.update({
         where: { id: document.id },
-        data: { status: 'failed' },
+        data: { status: DOCUMENT_STATUS.FAILED },
       })
 
       return NextResponse.json(
@@ -71,23 +74,4 @@ export async function POST(request: NextRequest) {
     console.error('[POST /api/documents/upload]', error)
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
   }
-}
-
-async function processDocument(documentId: string, buffer: Buffer): Promise<void> {
-  const { text, pageCount } = await extractPDFText(buffer)
-
-  const chunks = extractChunks(text)
-
-  if (!validateChunks(chunks)) {
-    throw new Error('No usable text segments could be extracted from this PDF')
-  }
-
-  await embedAndStoreChunks(chunks, documentId)
-
-  await prisma.document.update({
-    where: { id: documentId },
-    data: { status: 'ready', pageCount },
-  })
-
-  console.log(`[processDocument] ${documentId} ready — ${chunks.length} chunks embedded`)
 }
