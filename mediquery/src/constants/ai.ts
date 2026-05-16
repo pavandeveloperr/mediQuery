@@ -1,7 +1,7 @@
-// gemini-embedding-001 — works on v1beta (SDK default). text-embedding-004 is v1 only → 404.
+// Confirmed via ListModels API — only these models exist on this API key.
+// gemini-1.5-flash / gemini-1.5-pro do NOT exist on this key at all.
 export const GEMINI_EMBEDDING_MODEL = 'gemini-embedding-001'
-// gemini-1.5-flash — works on v1 (override in gemini.ts). gemini-1.5-pro is v1 only → 404 on v1beta.
-export const GEMINI_GENERATION_MODEL = 'gemini-1.5-flash'
+export const GEMINI_GENERATION_MODEL = 'gemini-2.0-flash-lite'
 export const EMBEDDING_DIMENSIONS = 768
 
 export const CHUNK_SIZE_CHARS = 512
