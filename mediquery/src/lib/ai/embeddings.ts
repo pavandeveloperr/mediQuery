@@ -19,7 +19,7 @@ export async function embedAndStoreChunks(
           const vector = await embedText(chunk.content)
           const vectorLiteral = `[${vector.join(',')}]`
 
-          // Create chunk row first (Prisma handles cuid generation)
+          // Create chunk row first so Prisma generates the cuid
           const dbChunk = await prisma.chunk.create({
             data: {
               content: chunk.content,
@@ -29,12 +29,14 @@ export async function embedAndStoreChunks(
             },
           })
 
-          // Write embedding via raw SQL — Prisma cannot handle Unsupported("vector") natively
-          await prisma.$executeRaw`
-            UPDATE chunks
-            SET embedding = ${vectorLiteral}::vector
-            WHERE id = ${dbChunk.id}
-          `
+          // $executeRawUnsafe gives explicit control over parameterisation.
+          // $1 is cast to vector at the DB level — Prisma's tagged-template
+          // variant can silently mangle the ::vector cast in some versions.
+          await prisma.$executeRawUnsafe(
+            'UPDATE chunks SET embedding = $1::vector WHERE id = $2',
+            vectorLiteral,
+            dbChunk.id
+          )
         } catch (error) {
           console.error(`[embeddings] Failed on chunk ${chunk.chunkIndex}:`, error)
           throw error
@@ -42,7 +44,7 @@ export async function embedAndStoreChunks(
       })
     )
 
-    // Pause between batches to avoid hitting Gemini rate limits
+    // Brief pause between batches to stay within Gemini rate limits
     if (i + BATCH_SIZE < chunks.length) {
       await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY_MS))
     }
