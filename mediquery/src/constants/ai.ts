@@ -1,6 +1,7 @@
-export const GEMINI_GENERATION_MODEL = 'gemini-1.5-pro'
-// text-embedding-004 is only available on v1 endpoint; SDK defaults to v1beta.
-// gemini-embedding-001 produces identical 768-dim vectors via v1beta and works.
+// Both gemini-1.5-pro and text-embedding-004 were moved to v1 endpoint only.
+// The SDK (@google/generative-ai) defaults to v1beta, so we use models that
+// are still available there: gemini-2.0-flash + gemini-embedding-001.
+export const GEMINI_GENERATION_MODEL = 'gemini-2.0-flash'
 export const GEMINI_EMBEDDING_MODEL = 'gemini-embedding-001'
 export const EMBEDDING_DIMENSIONS = 768
 
