@@ -27,15 +27,17 @@ export async function retrieveChunks(
 
     // $1 appears twice (SELECT and ORDER BY) — PostgreSQL reuses the same bound value.
     // $queryRawUnsafe is required because Prisma's tagged $queryRaw can mangle ::vector casts.
+    // Prisma stores camelCase field names as-is in PostgreSQL (no auto snake_case).
+    // Double-quotes are required to preserve case — "chunkIndex" not chunk_index.
     const rows = await prisma.$queryRawUnsafe<RawChunkRow[]>(
       `SELECT
         id,
         content,
-        chunk_index     AS "chunkIndex",
-        document_id     AS "documentId",
+        "chunkIndex",
+        "documentId",
         1 - (embedding <=> $1::vector) AS similarity
       FROM chunks
-      WHERE document_id = $2
+      WHERE "documentId" = $2
         AND embedding IS NOT NULL
       ORDER BY embedding <=> $1::vector
       LIMIT $3`,
