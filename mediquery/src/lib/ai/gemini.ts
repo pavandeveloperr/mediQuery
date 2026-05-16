@@ -8,14 +8,13 @@ import {
 
 const client = new GoogleGenerativeAI(env.geminiApiKey)
 
-// Generation models (gemini-1.5-flash, gemini-1.5-pro, etc.) were moved to the
-// v1 endpoint. The SDK defaults to v1beta, so we override via RequestOptions.
+// Generation models require the v1 endpoint — they 404 on the SDK's default v1beta.
 export const geminiModel = client.getGenerativeModel(
   { model: GEMINI_GENERATION_MODEL },
   { apiVersion: 'v1' }
 )
 
-// gemini-embedding-001 still works on v1beta (the SDK default) — no override needed.
+// gemini-embedding-001 works on v1beta (the SDK default) — no override needed.
 export const embeddingModel = client.getGenerativeModel({ model: GEMINI_EMBEDDING_MODEL })
 
 export { EMBEDDING_DIMENSIONS }
