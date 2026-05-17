@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String     @id @default(cuid())
+  email         String     @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
+  accounts      Account[]  
+  sessions      Session[]      
+  documents     Document[]
+  queries       Query[]
+  createdAt     DateTime   @default(now())
+
+  @@map("users")
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  name        String
+  storagePath String
+  fileSize    Int?
+  pageCount   Int?
+  status      String   @default("processing")
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chunks      Chunk[]
+  queries     Query[]
+  createdAt   DateTime @default(now())
+
+  @@map("documents")
+}
+
+model Chunk {
+  id         String   @id @default(cuid())
+  content    String
+  chunkIndex Int
+  tokenCount Int?
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  embedding  Unsupported("vector")?
+  createdAt  DateTime @default(now())
+
+  @@map("chunks")
+}
+
+model Query {
+  id         String   @id @default(cuid())
+  question   String
+  answer     String
+  confidence Float
+  tokenCount Int      @default(0)
+  costUsd    Float    @default(0)
+  agentSteps Json     @default("[]")
+  sources    Json     @default("[]")
+  userId     String
+  documentId String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@map("queries")
+}
+
+model EvalResult {
+  id            String   @id @default(cuid())
+  faithfulness  Float
+  relevance     Float
+  precision     Float
+  questionCount Int
+  createdAt     DateTime @default(now())
+
+  @@map("eval_results")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}

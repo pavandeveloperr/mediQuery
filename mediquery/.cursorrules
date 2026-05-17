@@ -1,0 +1,45 @@
+# MediQuery — Cursor Rules
+
+## Project
+Clinical document intelligence platform. Users upload medical PDFs,
+ask natural language questions, get grounded cited answers via
+agentic RAG. Never hallucinate — always cite sources.
+
+## Stack
+- Next.js 14 App Router + TypeScript (strict)
+- Tailwind CSS + shadcn/ui
+- Gemini API (gemini-1.5-pro + text-embedding-004)
+- PostgreSQL + pgvector via Supabase
+- Prisma ORM
+- NextAuth.js (Google OAuth)
+- Upstash Redis (rate limiting)
+- Vercel deployment
+
+## Folder structure
+src/app/          → pages and API routes
+src/lib/ai/       → Gemini client, embeddings, chunker, agent
+src/lib/db/       → Prisma client singleton
+src/components/   → UI and feature components
+src/types/        → TypeScript interfaces
+
+## Coding rules — always follow
+- TypeScript only, never use "any"
+- "use client" only when useState/useEffect/events needed
+- All imports use @/ alias, never relative paths
+- Prisma client from @/lib/db/prisma only
+- Gemini client from @/lib/ai/gemini only
+- Every async function has try/catch error handling
+- Commit messages: feat/fix/chore prefix
+
+## AI pipeline
+PDF → extract text → chunk (512 chars, 50 overlap) →
+embed (text-embedding-004, 768 dims) → store pgvector →
+query → embed question → cosine similarity search →
+agent checks confidence (threshold 0.75) →
+reformulate if low → stream answer → cite sources
+
+## Key decisions
+- pgvector over Pinecone: no separate service needed
+- 512 char chunks: best precision on medical terminology
+- 0.75 similarity threshold: agent reformulates below this
+- Streaming always: Gemini takes 3-8s, streaming feels fast
