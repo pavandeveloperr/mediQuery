@@ -16,6 +16,10 @@ export const UI_LABELS = {
   STREAMING_PLACEHOLDER: 'Generating response…',
   DOCUMENTS_LOADING: 'Documents',
   documentsReady: (count: number) => `Documents · ${count} ready`,
+  DOC_PROCESSING_TITLE: 'Indexing document…',
+  DOC_PROCESSING_DESCRIPTION: 'Extracting text and building vector embeddings. This usually takes under a minute.',
+  DOC_FAILED_TITLE: 'Processing failed',
+  DOC_FAILED_DESCRIPTION: 'Delete this document from the sidebar and upload it again to retry.',
 } as const
 
 export const SUGGESTED_QUESTIONS = [

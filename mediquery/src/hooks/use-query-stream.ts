@@ -1,22 +1,95 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { toast } from 'sonner'
 import type { UIMessage, MedicalChunk, RAGStreamPayload } from '@/types'
+import type { QueryHistoryItem } from '@/app/api/queries/route'
 
 export function useQueryStream(selectedDocId: string | null) {
   const [messages, setMessages] = useState<UIMessage[]>([])
   const [activeCitations, setActiveCitations] = useState<MedicalChunk[]>([])
   const [isCitationsOpen, setIsCitationsOpen] = useState(true)
   const [isStreaming, setIsStreaming] = useState(false)
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false)
+  const [remainingQueries, setRemainingQueries] = useState<number | null>(null)
   const streamingRef = useRef(false)
   const abortRef = useRef<AbortController | null>(null)
 
+  // Cancel any in-flight stream on unmount
   useEffect(() => {
     return () => {
       abortRef.current?.abort()
       streamingRef.current = false
     }
   }, [])
+
+  // Populate the quota chip immediately on mount without waiting for a query.
+  useEffect(() => {
+    async function fetchQuota() {
+      try {
+        const res = await fetch('/api/query/quota')
+        if (!res.ok) return
+        const data = (await res.json()) as { remaining: number }
+        setRemainingQueries(data.remaining)
+      } catch (error) {
+        console.error('[useQueryStream] fetchQuota failed:', error)
+      }
+    }
+    void fetchQuota()
+  }, [])
+
+  // Load query history whenever the selected document changes
+  useEffect(() => {
+    if (!selectedDocId) {
+      setMessages([])
+      setActiveCitations([])
+      return
+    }
+
+    async function loadHistory() {
+      setIsHistoryLoading(true)
+      setMessages([])
+      try {
+        const res = await fetch(`/api/queries?documentId=${selectedDocId}`)
+        if (!res.ok) return
+
+        const items: QueryHistoryItem[] = await res.json()
+
+        const hydrated: UIMessage[] = items.flatMap((item) => [
+          {
+            id: `${item.id}-user`,
+            role: 'user' as const,
+            content: item.question,
+            timestamp: item.createdAt,
+          },
+          {
+            id: `${item.id}-assistant`,
+            role: 'assistant' as const,
+            content: item.answer,
+            isStreaming: false,
+            confidenceScore: item.confidence,
+            citations: item.citations,
+            agentSteps: item.agentSteps,
+            timestamp: item.createdAt,
+          },
+        ])
+
+        setMessages(hydrated)
+
+        // Surface the most recent query's citations on load
+        const lastCitations = items.at(-1)?.citations ?? []
+        if (lastCitations.length > 0) {
+          setActiveCitations(lastCitations)
+        }
+      } catch (error) {
+        console.error('[useQueryStream] loadHistory failed:', error)
+      } finally {
+        setIsHistoryLoading(false)
+      }
+    }
+
+    void loadHistory()
+  }, [selectedDocId])
 
   const clearMessages = useCallback(() => {
     setMessages([])
@@ -39,6 +112,9 @@ export function useQueryStream(selectedDocId: string | null) {
         })
 
         if (!response.ok || !response.body) {
+          if (response.status === 429) {
+            toast.error('Daily query limit reached — 20 queries per day')
+          }
           throw new Error(`Query failed with status ${response.status}`)
         }
 
@@ -76,6 +152,18 @@ export function useQueryStream(selectedDocId: string | null) {
                 )
               }
 
+              // Error event — show the message and stop streaming.
+              if (payload.error !== undefined) {
+                toast.error(payload.error)
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === messageId
+                      ? { ...m, content: payload.error!, isStreaming: false }
+                      : m
+                  )
+                )
+              }
+
               // Citations present means this is the final metadata event.
               if (payload.citations !== undefined) {
                 setMessages((prev) =>
@@ -95,6 +183,9 @@ export function useQueryStream(selectedDocId: string | null) {
                   setActiveCitations(payload.citations)
                   setIsCitationsOpen(true)
                 }
+                if (payload.remainingQueries !== undefined) {
+                  setRemainingQueries(payload.remainingQueries)
+                }
               }
             } catch {
               // Malformed JSON line — skip silently.
@@ -105,6 +196,8 @@ export function useQueryStream(selectedDocId: string | null) {
         if (error instanceof Error && error.name === 'AbortError') return
 
         console.error('[useQueryStream] stream error:', error)
+        const is429 = error instanceof Error && error.message.includes('429')
+        if (!is429) toast.error('Query failed — please try again')
         setMessages((prev) =>
           prev.map((m) =>
             m.id === messageId
@@ -115,6 +208,10 @@ export function useQueryStream(selectedDocId: string | null) {
       } finally {
         streamingRef.current = false
         setIsStreaming(false)
+        // Safety net: clear the blinking cursor on the message regardless of how the stream ended.
+        setMessages((prev) =>
+          prev.map((m) => (m.id === messageId && m.isStreaming ? { ...m, isStreaming: false } : m))
+        )
       }
     },
     []
@@ -151,6 +248,8 @@ export function useQueryStream(selectedDocId: string | null) {
     isCitationsOpen,
     setIsCitationsOpen,
     isStreaming,
+    isHistoryLoading,
+    remainingQueries,
     handleSubmit,
     clearMessages,
   }

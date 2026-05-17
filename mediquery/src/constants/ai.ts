@@ -14,3 +14,10 @@ export const EMBEDDING_BATCH_DELAY_MS = 500
 export const SIMILARITY_THRESHOLD = 0.75
 export const MAX_RETRIEVED_CHUNKS = 5
 export const MAX_AGENT_REFORMULATIONS = 1
+export const DAILY_QUERY_LIMIT = 20
+// Single key so every user draws from the same Gemini API quota pool.
+export const GLOBAL_RATE_LIMIT_KEY = 'global'
+
+// Retry config for transient Gemini 429s (RPM window). 1 retry keeps wait time under 15s.
+export const GEMINI_RATE_LIMIT_MAX_RETRIES = 1
+export const GEMINI_RATE_LIMIT_FALLBACK_DELAY_MS = 10_000

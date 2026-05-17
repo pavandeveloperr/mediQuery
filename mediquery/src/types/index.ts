@@ -35,6 +35,8 @@ export interface RAGStreamPayload {
   confidenceScore?: number
   citations?: MedicalChunk[]
   steps?: AgentStep[]
+  remainingQueries?: number
+  error?: string
 }
 
 // ── UI types ──────────────────────────────────────────────────────────────────
