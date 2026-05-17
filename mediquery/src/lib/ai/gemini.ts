@@ -1,23 +1,18 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { env } from '@/config/env'
+import {
+  GEMINI_GENERATION_MODEL,
+  GEMINI_EMBEDDING_MODEL,
+  EMBEDDING_DIMENSIONS,
+} from '@/constants/ai'
 
-if (!process.env.GEMINI_API_KEY) {
-  throw new Error('GEMINI_API_KEY environment variable is not set')
-}
+const client = new GoogleGenerativeAI(env.geminiApiKey)
 
-const client = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+// Both models confirmed available on v1beta via ListModels for this API key.
+export const geminiModel = client.getGenerativeModel({ model: GEMINI_GENERATION_MODEL })
+export const embeddingModel = client.getGenerativeModel({ model: GEMINI_EMBEDDING_MODEL })
 
-export const geminiModel = client.getGenerativeModel({
-  model: 'gemini-1.5-pro',
-})
-
-// text-embedding-004 was retired — gemini-embedding-001 is current stable.
-// outputDimensionality: 768 uses Matryoshka truncation to stay within the
-// pgvector(768) column without requiring a DB migration.
-export const embeddingModel = client.getGenerativeModel({
-  model: 'gemini-embedding-001',
-})
-
-export const EMBEDDING_DIMENSIONS = 768
+export { EMBEDDING_DIMENSIONS }
 
 export async function embedText(text: string): Promise<number[]> {
   try {
@@ -29,7 +24,9 @@ export async function embedText(text: string): Promise<number[]> {
     const embedding = result.embedding.values
 
     if (!embedding || embedding.length !== EMBEDDING_DIMENSIONS) {
-      throw new Error(`Expected ${EMBEDDING_DIMENSIONS}-dimensional embedding, got ${embedding?.length ?? 0}`)
+      throw new Error(
+        `Expected ${EMBEDDING_DIMENSIONS}-dimensional embedding, got ${embedding?.length ?? 0}`
+      )
     }
 
     return embedding
@@ -55,7 +52,10 @@ export async function generateText(prompt: string): Promise<string> {
   }
 }
 
-export async function streamGenerateText(prompt: string, onChunk: (chunk: string) => void): Promise<void> {
+export async function streamGenerateText(
+  prompt: string,
+  onChunk: (chunk: string) => void
+): Promise<void> {
   try {
     const result = await geminiModel.generateContentStream(prompt)
 
