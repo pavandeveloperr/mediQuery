@@ -23,6 +23,21 @@ export function useQueryStream(selectedDocId: string | null) {
     }
   }, [])
 
+  // Populate the quota chip immediately on mount without waiting for a query.
+  useEffect(() => {
+    async function fetchQuota() {
+      try {
+        const res = await fetch('/api/query/quota')
+        if (!res.ok) return
+        const data = (await res.json()) as { remaining: number }
+        setRemainingQueries(data.remaining)
+      } catch (error) {
+        console.error('[useQueryStream] fetchQuota failed:', error)
+      }
+    }
+    void fetchQuota()
+  }, [])
+
   // Load query history whenever the selected document changes
   useEffect(() => {
     if (!selectedDocId) {
@@ -137,6 +152,18 @@ export function useQueryStream(selectedDocId: string | null) {
                 )
               }
 
+              // Error event — show the message and stop streaming.
+              if (payload.error !== undefined) {
+                toast.error(payload.error)
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === messageId
+                      ? { ...m, content: payload.error!, isStreaming: false }
+                      : m
+                  )
+                )
+              }
+
               // Citations present means this is the final metadata event.
               if (payload.citations !== undefined) {
                 setMessages((prev) =>
@@ -181,6 +208,10 @@ export function useQueryStream(selectedDocId: string | null) {
       } finally {
         streamingRef.current = false
         setIsStreaming(false)
+        // Safety net: clear the blinking cursor on the message regardless of how the stream ended.
+        setMessages((prev) =>
+          prev.map((m) => (m.id === messageId && m.isStreaming ? { ...m, isStreaming: false } : m))
+        )
       }
     },
     []

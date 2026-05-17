@@ -20,6 +20,7 @@ interface Props {
   onUploadFile: (file: File) => void
   onDeleteDocument: (id: string) => void
   userName: string | null | undefined
+  userEmail: string | null | undefined
   userImage: string | null | undefined
   isLoading?: boolean
   isStreaming?: boolean
@@ -115,6 +116,7 @@ export default function DocumentSidebar({
   onUploadFile,
   onDeleteDocument,
   userName,
+  userEmail,
   userImage,
   isLoading = false,
   isStreaming = false,
@@ -195,7 +197,12 @@ export default function DocumentSidebar({
             {(userName ?? 'U')[0].toUpperCase()}
           </div>
         )}
-        <p className="flex-1 truncate text-xs text-slate-500">{userName ?? 'User'}</p>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-medium text-slate-700">{userName ?? 'User'}</p>
+          {userEmail && (
+            <p className="truncate text-xs text-slate-400">{userEmail}</p>
+          )}
+        </div>
       </div>
     </aside>
   )

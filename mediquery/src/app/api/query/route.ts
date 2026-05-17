@@ -3,7 +3,9 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
 import { runAgent } from '@/lib/ai/agent'
+import { RateLimitError } from '@/lib/ai/gemini'
 import { queryRateLimit } from '@/lib/cache/rate-limit'
+import { GLOBAL_RATE_LIMIT_KEY } from '@/constants/ai'
 import type { RAGStreamPayload } from '@/types'
 
 function jsonError(message: string, status: number) {
@@ -39,7 +41,7 @@ export async function POST(request: NextRequest) {
       return jsonError('Invalid request body', 400)
     }
 
-    const { success, remaining, reset } = await queryRateLimit.limit(session.user.id)
+    const { success, remaining, reset } = await queryRateLimit.limit(GLOBAL_RATE_LIMIT_KEY)
     if (!success) {
       const resetsAt = new Date(reset).toISOString()
       return new Response(
@@ -106,7 +108,11 @@ export async function POST(request: NextRequest) {
           sendDone()
         } catch (error) {
           console.error('[POST /api/query] Agent failed:', error)
-          sendPayload({ token: 'An error occurred while processing your query.' })
+          const errorMessage =
+            error instanceof RateLimitError
+              ? 'You have exceeded the maximum query quota for today. Please try again tomorrow.'
+              : 'An error occurred while processing your query. Please try again.'
+          sendPayload({ token: '', error: errorMessage })
           sendDone()
         } finally {
           controller.close()

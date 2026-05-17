@@ -10,6 +10,7 @@ import DocumentSidebar from '@/components/features/DocumentSidebar'
 import QueryWorkspace from '@/components/features/QueryWorkspace'
 import SourceCitations from '@/components/features/SourceCitations'
 import { UI_LABELS } from '@/constants/ui'
+import { DAILY_QUERY_LIMIT } from '@/constants/ai'
 
 interface Props {
   userName: string | null
@@ -60,7 +61,6 @@ export default function AppShell({ userName, userEmail, userImage }: Props) {
           <span className="text-sm font-semibold text-slate-800">{UI_LABELS.APP_TITLE}</span>
         </div>
         <div className="flex items-center gap-4">
-          <span className="hidden text-xs text-slate-400 sm:block">{userEmail}</span>
           {remainingQueries !== null && (
             <span
               className={`hidden rounded-full px-2.5 py-0.5 text-xs font-medium sm:block ${
@@ -70,7 +70,7 @@ export default function AppShell({ userName, userEmail, userImage }: Props) {
               }`}
               title="Queries remaining today"
             >
-              {remainingQueries} / 20 left
+              {remainingQueries} / {DAILY_QUERY_LIMIT} left
             </span>
           )}
           <button
@@ -91,6 +91,7 @@ export default function AppShell({ userName, userEmail, userImage }: Props) {
           onUploadFile={handleUploadFile}
           onDeleteDocument={handleDeleteDoc}
           userName={userName}
+          userEmail={userEmail}
           userImage={userImage}
           isLoading={isDocumentsLoading}
           isStreaming={isStreaming}
