@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Send, FileText } from 'lucide-react'
+import { AlertCircle, Loader2, Send, FileText } from 'lucide-react'
 import type { UIDocument, UIMessage } from '@/types'
 import AgentStepTrace from '@/components/ui/AgentStepTrace'
 import ConfidenceBadge from '@/components/ui/ConfidenceBadge'
@@ -70,6 +70,34 @@ function EmptyQueryState({ onSelectQuestion }: { onSelectQuestion: (q: string) =
   )
 }
 
+function DocumentProcessingState() {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
+      <div className="rounded-2xl bg-amber-50 p-5">
+        <Loader2 className="h-10 w-10 animate-spin text-amber-400" />
+      </div>
+      <div>
+        <p className="text-sm font-medium text-slate-700">{UI_LABELS.DOC_PROCESSING_TITLE}</p>
+        <p className="mt-1 max-w-xs text-xs text-slate-400">{UI_LABELS.DOC_PROCESSING_DESCRIPTION}</p>
+      </div>
+    </div>
+  )
+}
+
+function DocumentFailedState() {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
+      <div className="rounded-2xl bg-rose-50 p-5">
+        <AlertCircle className="h-10 w-10 text-rose-400" />
+      </div>
+      <div>
+        <p className="text-sm font-medium text-slate-700">{UI_LABELS.DOC_FAILED_TITLE}</p>
+        <p className="mt-1 max-w-xs text-xs text-slate-400">{UI_LABELS.DOC_FAILED_DESCRIPTION}</p>
+      </div>
+    </div>
+  )
+}
+
 function NoDocumentSelected() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
@@ -122,27 +150,41 @@ export default function QueryWorkspace({ selectedDocument, messages, onSubmit, i
     ? UI_LABELS.STREAMING_PLACEHOLDER
     : UI_LABELS.QUERY_PLACEHOLDER
 
+  const STATUS_BADGE: Record<UIDocument['status'], { label: string; className: string }> = {
+    ready: { label: 'Ready', className: 'bg-emerald-100 text-emerald-700' },
+    processing: { label: 'Processing…', className: 'bg-amber-100 text-amber-700' },
+    failed: { label: 'Failed', className: 'bg-rose-100 text-rose-700' },
+  }
+  const badge = STATUS_BADGE[selectedDocument.status]
+
+  const bodyContent =
+    selectedDocument.status === 'processing' ? (
+      <DocumentProcessingState />
+    ) : selectedDocument.status === 'failed' ? (
+      <DocumentFailedState />
+    ) : messages.length === 0 ? (
+      <EmptyQueryState onSelectQuestion={handleSelectSuggestedQuestion} />
+    ) : (
+      <div className="mx-auto max-w-2xl space-y-6">
+        {messages.map((message) => (
+          <MessageBubble key={message.id} message={message} />
+        ))}
+        <div ref={bottomRef} />
+      </div>
+    )
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="flex shrink-0 items-center gap-2 border-b border-slate-200 bg-slate-50 px-5 py-2.5">
         <FileText className="h-4 w-4 text-slate-400" />
         <p className="truncate text-xs text-slate-500">{selectedDocument.name}</p>
-        <span className="ml-auto shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
-          Ready
+        <span className={`ml-auto shrink-0 rounded-full px-2 py-0.5 text-xs font-medium capitalize ${badge.className}`}>
+          {badge.label}
         </span>
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6">
-        {messages.length === 0 ? (
-          <EmptyQueryState onSelectQuestion={handleSelectSuggestedQuestion} />
-        ) : (
-          <div className="mx-auto max-w-2xl space-y-6">
-            {messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
-            ))}
-            <div ref={bottomRef} />
-          </div>
-        )}
+        {bodyContent}
       </div>
 
       <div className="shrink-0 border-t border-slate-200 bg-white px-5 py-4">

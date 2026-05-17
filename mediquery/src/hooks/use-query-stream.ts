@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { toast } from 'sonner'
 import type { UIMessage, MedicalChunk, RAGStreamPayload } from '@/types'
 
 export function useQueryStream(selectedDocId: string | null) {
@@ -39,6 +40,9 @@ export function useQueryStream(selectedDocId: string | null) {
         })
 
         if (!response.ok || !response.body) {
+          if (response.status === 429) {
+            toast.error('Daily query limit reached — 20 queries per day')
+          }
           throw new Error(`Query failed with status ${response.status}`)
         }
 
@@ -105,6 +109,8 @@ export function useQueryStream(selectedDocId: string | null) {
         if (error instanceof Error && error.name === 'AbortError') return
 
         console.error('[useQueryStream] stream error:', error)
+        const is429 = error instanceof Error && error.message.includes('429')
+        if (!is429) toast.error('Query failed — please try again')
         setMessages((prev) =>
           prev.map((m) =>
             m.id === messageId

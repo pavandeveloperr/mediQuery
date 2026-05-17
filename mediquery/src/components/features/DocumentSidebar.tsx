@@ -1,8 +1,9 @@
 'use client'
 
-import { useRef } from 'react'
-import { AlertCircle, CheckCircle2, Loader2, Plus } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { AlertCircle, CheckCircle2, Loader2, Plus, Trash2 } from 'lucide-react'
 import type { UIDocument } from '@/types'
+import ConfirmModal from '@/components/ui/ConfirmModal'
 import { DocumentCardSkeleton } from '@/components/ui/Skeleton'
 import { truncateDocumentName } from '@/lib/utils/string'
 import {
@@ -17,6 +18,7 @@ interface Props {
   selectedId: string | null
   onSelect: (id: string) => void
   onUploadFile: (file: File) => void
+  onDeleteDocument: (id: string) => void
   userName: string | null | undefined
   userImage: string | null | undefined
   isLoading?: boolean
@@ -38,43 +40,67 @@ function DocumentCard({
   doc,
   isSelected,
   onSelect,
+  onDelete,
 }: {
   doc: UIDocument
   isSelected: boolean
   onSelect: (id: string) => void
+  onDelete: (id: string) => void
 }) {
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const isReady = doc.status === DOCUMENT_STATUS.READY
   const cardClass = isSelected
     ? 'border-blue-200 bg-blue-50'
     : isReady
       ? 'border-transparent hover:bg-slate-50'
-      : 'cursor-not-allowed border-transparent opacity-50'
+      : 'border-transparent opacity-50'
 
   return (
-    <button
-      type="button"
-      disabled={!isReady}
-      onClick={() => isReady && onSelect(doc.id)}
-      className={`w-full rounded-xl border px-3 py-2.5 text-left transition-all ${cardClass}`}
-    >
-      <div className="flex items-start gap-2.5">
-        <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${STATUS_DOT_CLASS[doc.status]}`} />
-        <div className="min-w-0 flex-1">
-          <p
-            className={`truncate text-sm font-medium leading-tight ${
-              isSelected ? 'text-blue-700' : 'text-slate-700'
-            }`}
-          >
-            {truncateDocumentName(doc.name)}
-          </p>
-          <p className="mt-1 flex items-center gap-1 text-xs capitalize text-slate-400">
-            {STATUS_ICON[doc.status]}
-            {doc.status}
-            {doc.pageCount && isReady && <span>· {doc.pageCount}p</span>}
-          </p>
-        </div>
+    <>
+      <div className={`group relative w-full rounded-xl border px-3 py-2.5 transition-all ${cardClass}`}>
+        <button
+          type="button"
+          disabled={!isReady}
+          onClick={() => isReady && onSelect(doc.id)}
+          className="flex w-full items-start gap-2.5 text-left disabled:cursor-not-allowed"
+        >
+          <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${STATUS_DOT_CLASS[doc.status]}`} />
+          <div className="min-w-0 flex-1 pr-5">
+            <p
+              className={`truncate text-sm font-medium leading-tight ${
+                isSelected ? 'text-blue-700' : 'text-slate-700'
+              }`}
+            >
+              {truncateDocumentName(doc.name)}
+            </p>
+            <p className="mt-1 flex items-center gap-1 text-xs capitalize text-slate-400">
+              {STATUS_ICON[doc.status]}
+              {doc.status}
+              {doc.pageCount && isReady && <span>· {doc.pageCount}p</span>}
+            </p>
+          </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsDeleteModalOpen(true)}
+          aria-label={`Delete ${doc.name}`}
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-300 opacity-0 transition-opacity hover:bg-rose-50 hover:text-rose-500 group-hover:opacity-100"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
       </div>
-    </button>
+
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        title="Delete document?"
+        subtitle={`"${doc.name}" will be permanently removed along with all its data.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={() => { setIsDeleteModalOpen(false); onDelete(doc.id) }}
+        onCancel={() => setIsDeleteModalOpen(false)}
+      />
+    </>
   )
 }
 
@@ -83,6 +109,7 @@ export default function DocumentSidebar({
   selectedId,
   onSelect,
   onUploadFile,
+  onDeleteDocument,
   userName,
   userImage,
   isLoading = false,
@@ -110,6 +137,7 @@ export default function DocumentSidebar({
           doc={doc}
           isSelected={selectedId === doc.id}
           onSelect={onSelect}
+          onDelete={onDeleteDocument}
         />
       ))
 

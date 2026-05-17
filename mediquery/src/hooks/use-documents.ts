@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
+import { toast } from 'sonner'
 import type { UIDocument } from '@/types'
 import {
   DOCUMENT_STATUS,
@@ -53,6 +54,30 @@ export function useDocuments() {
     setSelectedDocId(id)
   }, [])
 
+  const handleDeleteDocument = useCallback(
+    async (id: string) => {
+      // Auto-select the next ready doc before removing from state
+      if (selectedDocId === id) {
+        const next = documents.find((d) => d.id !== id && d.status === DOCUMENT_STATUS.READY)
+        setSelectedDocId(next?.id ?? null)
+      }
+
+      // Optimistic remove
+      setDocuments((prev) => prev.filter((d) => d.id !== id))
+
+      try {
+        const res = await fetch(`/api/documents/${id}`, { method: 'DELETE' })
+        if (!res.ok) throw new Error('Delete failed')
+        toast.success('Document deleted')
+      } catch (error) {
+        console.error('[useDocuments] delete error:', error)
+        toast.error('Delete failed — restoring document')
+        void fetchDocuments()
+      }
+    },
+    [selectedDocId, documents, fetchDocuments]
+  )
+
   const handleUploadFile = useCallback(async (file: File) => {
     const tempId = `temp-${Date.now()}`
 
@@ -65,6 +90,8 @@ export function useDocuments() {
       },
       ...prev,
     ])
+
+    const toastId = toast.loading('Uploading document…')
 
     try {
       if (file.type !== ACCEPTED_MIME_TYPE) {
@@ -94,8 +121,11 @@ export function useDocuments() {
         ...prev.filter((d) => d.id !== tempId),
       ])
       setSelectedDocId((prev) => prev ?? doc.id)
+      toast.success(`"${doc.name}" uploaded — indexing in background`, { id: toastId })
     } catch (error) {
       console.error('[useDocuments] upload error:', error)
+      const message = error instanceof Error ? error.message : 'Upload failed'
+      toast.error(message, { id: toastId })
       setDocuments((prev) =>
         prev.map((d) =>
           d.id === tempId ? { ...d, status: DOCUMENT_STATUS.FAILED as UIDocument['status'] } : d
@@ -110,5 +140,6 @@ export function useDocuments() {
     selectedDocId,
     selectDocument,
     handleUploadFile,
+    handleDeleteDocument,
   }
 }
