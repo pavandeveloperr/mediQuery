@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
 import { runAgent } from '@/lib/ai/agent'
+import { queryRateLimit } from '@/lib/cache/rate-limit'
 import type { RAGStreamPayload } from '@/types'
 
 function jsonError(message: string, status: number) {
@@ -38,6 +39,22 @@ export async function POST(request: NextRequest) {
       return jsonError('Invalid request body', 400)
     }
 
+    const { success, remaining, reset } = await queryRateLimit.limit(session.user.id)
+    if (!success) {
+      const resetsAt = new Date(reset).toISOString()
+      return new Response(
+        JSON.stringify({ error: 'Daily query limit reached', remaining, resetsAt }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': resetsAt,
+          },
+        }
+      )
+    }
+
     const document = await prisma.document.findFirst({
       where: { id: documentId, userId: session.user.id },
     })
@@ -45,6 +62,7 @@ export async function POST(request: NextRequest) {
       return jsonError('Document not found', 404)
     }
 
+    const userId = session.user.id
     const encoder = new TextEncoder()
 
     const stream = new ReadableStream({
@@ -55,16 +73,34 @@ export async function POST(request: NextRequest) {
         const sendDone = () => controller.enqueue(encoder.encode('data: [DONE]\n\n'))
 
         try {
-          const result = await runAgent(question, documentId, (token) =>
-            sendPayload({ token })
-          )
+          let fullAnswer = ''
 
-          // Final metadata event — carries citations, confidence, and agent trace.
+          const result = await runAgent(question, documentId, (token) => {
+            fullAnswer += token
+            sendPayload({ token })
+          })
+
+          // Persist the completed query to the database.
+          // TODO: populate tokenCount and costUsd once token-counting is implemented
+          await prisma.query.create({
+            data: {
+              question,
+              answer: fullAnswer,
+              confidence: result.confidenceScore,
+              agentSteps: result.steps as unknown as object[],
+              sources: result.citations as unknown as object[],
+              userId,
+              documentId,
+            },
+          })
+
+          // Final metadata event — carries citations, confidence, agent trace, and remaining quota.
           sendPayload({
             token: '',
             confidenceScore: result.confidenceScore,
             citations: result.citations,
             steps: result.steps,
+            remainingQueries: remaining,
           })
 
           sendDone()
@@ -83,7 +119,7 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',
         'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no',  // disable Nginx buffering when behind a proxy
+        'X-Accel-Buffering': 'no', // disable Nginx buffering when behind a proxy
       },
     })
   } catch (error) {

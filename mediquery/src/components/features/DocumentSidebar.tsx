@@ -22,6 +22,7 @@ interface Props {
   userName: string | null | undefined
   userImage: string | null | undefined
   isLoading?: boolean
+  isStreaming?: boolean
 }
 
 const STATUS_DOT_CLASS: Record<UIDocument['status'], string> = {
@@ -39,11 +40,13 @@ const STATUS_ICON: Record<UIDocument['status'], React.ReactNode> = {
 function DocumentCard({
   doc,
   isSelected,
+  isStreaming,
   onSelect,
   onDelete,
 }: {
   doc: UIDocument
   isSelected: boolean
+  isStreaming: boolean
   onSelect: (id: string) => void
   onDelete: (id: string) => void
 }) {
@@ -83,8 +86,9 @@ function DocumentCard({
         <button
           type="button"
           onClick={() => setIsDeleteModalOpen(true)}
+          disabled={isSelected && isStreaming}
           aria-label={`Delete ${doc.name}`}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-300 opacity-0 transition-opacity hover:bg-rose-50 hover:text-rose-500 group-hover:opacity-100"
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-300 opacity-0 transition-opacity hover:bg-rose-50 hover:text-rose-500 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-300"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
@@ -113,6 +117,7 @@ export default function DocumentSidebar({
   userName,
   userImage,
   isLoading = false,
+  isStreaming = false,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -136,6 +141,7 @@ export default function DocumentSidebar({
           key={doc.id}
           doc={doc}
           isSelected={selectedId === doc.id}
+          isStreaming={isStreaming}
           onSelect={onSelect}
           onDelete={onDeleteDocument}
         />

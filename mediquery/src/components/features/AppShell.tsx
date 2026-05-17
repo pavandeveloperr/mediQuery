@@ -34,6 +34,8 @@ export default function AppShell({ userName, userEmail, userImage }: Props) {
     isCitationsOpen,
     setIsCitationsOpen,
     isStreaming,
+    isHistoryLoading,
+    remainingQueries,
     handleSubmit,
     clearMessages,
   } = useQueryStream(selectedDocId)
@@ -59,6 +61,18 @@ export default function AppShell({ userName, userEmail, userImage }: Props) {
         </div>
         <div className="flex items-center gap-4">
           <span className="hidden text-xs text-slate-400 sm:block">{userEmail}</span>
+          {remainingQueries !== null && (
+            <span
+              className={`hidden rounded-full px-2.5 py-0.5 text-xs font-medium sm:block ${
+                remainingQueries <= 5
+                  ? 'bg-rose-100 text-rose-600'
+                  : 'bg-slate-100 text-slate-500'
+              }`}
+              title="Queries remaining today"
+            >
+              {remainingQueries} / 20 left
+            </span>
+          )}
           <button
             type="button"
             onClick={() => setIsSignOutModalOpen(true)}
@@ -79,6 +93,7 @@ export default function AppShell({ userName, userEmail, userImage }: Props) {
           userName={userName}
           userImage={userImage}
           isLoading={isDocumentsLoading}
+          isStreaming={isStreaming}
         />
 
         <QueryWorkspace
@@ -86,6 +101,7 @@ export default function AppShell({ userName, userEmail, userImage }: Props) {
           messages={messages}
           onSubmit={handleSubmit}
           isStreaming={isStreaming}
+          isHistoryLoading={isHistoryLoading}
         />
 
         {isCitationsOpen ? (

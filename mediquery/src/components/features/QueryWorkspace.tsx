@@ -5,6 +5,7 @@ import { AlertCircle, Loader2, Send, FileText } from 'lucide-react'
 import type { UIDocument, UIMessage } from '@/types'
 import AgentStepTrace from '@/components/ui/AgentStepTrace'
 import ConfidenceBadge from '@/components/ui/ConfidenceBadge'
+import { MessageSkeleton } from '@/components/ui/Skeleton'
 import { UI_LABELS, SUGGESTED_QUESTIONS } from '@/constants/ui'
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
   messages: UIMessage[]
   onSubmit: (question: string) => void
   isStreaming: boolean
+  isHistoryLoading: boolean
 }
 
 function MessageBubble({ message }: { message: UIMessage }) {
@@ -98,6 +100,17 @@ function DocumentFailedState() {
   )
 }
 
+function HistoryLoadingSkeleton() {
+  return (
+    <div className="mx-auto max-w-2xl space-y-6">
+      <MessageSkeleton role="user" />
+      <MessageSkeleton role="assistant" />
+      <MessageSkeleton role="user" />
+      <MessageSkeleton role="assistant" />
+    </div>
+  )
+}
+
 function NoDocumentSelected() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
@@ -112,7 +125,7 @@ function NoDocumentSelected() {
   )
 }
 
-export default function QueryWorkspace({ selectedDocument, messages, onSubmit, isStreaming }: Props) {
+export default function QueryWorkspace({ selectedDocument, messages, onSubmit, isStreaming, isHistoryLoading }: Props) {
   const [input, setInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -158,7 +171,9 @@ export default function QueryWorkspace({ selectedDocument, messages, onSubmit, i
   const badge = STATUS_BADGE[selectedDocument.status]
 
   const bodyContent =
-    selectedDocument.status === 'processing' ? (
+    isHistoryLoading ? (
+      <HistoryLoadingSkeleton />
+    ) : selectedDocument.status === 'processing' ? (
       <DocumentProcessingState />
     ) : selectedDocument.status === 'failed' ? (
       <DocumentFailedState />

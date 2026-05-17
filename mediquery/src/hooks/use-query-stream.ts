@@ -3,21 +3,78 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
 import type { UIMessage, MedicalChunk, RAGStreamPayload } from '@/types'
+import type { QueryHistoryItem } from '@/app/api/queries/route'
 
 export function useQueryStream(selectedDocId: string | null) {
   const [messages, setMessages] = useState<UIMessage[]>([])
   const [activeCitations, setActiveCitations] = useState<MedicalChunk[]>([])
   const [isCitationsOpen, setIsCitationsOpen] = useState(true)
   const [isStreaming, setIsStreaming] = useState(false)
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false)
+  const [remainingQueries, setRemainingQueries] = useState<number | null>(null)
   const streamingRef = useRef(false)
   const abortRef = useRef<AbortController | null>(null)
 
+  // Cancel any in-flight stream on unmount
   useEffect(() => {
     return () => {
       abortRef.current?.abort()
       streamingRef.current = false
     }
   }, [])
+
+  // Load query history whenever the selected document changes
+  useEffect(() => {
+    if (!selectedDocId) {
+      setMessages([])
+      setActiveCitations([])
+      return
+    }
+
+    async function loadHistory() {
+      setIsHistoryLoading(true)
+      setMessages([])
+      try {
+        const res = await fetch(`/api/queries?documentId=${selectedDocId}`)
+        if (!res.ok) return
+
+        const items: QueryHistoryItem[] = await res.json()
+
+        const hydrated: UIMessage[] = items.flatMap((item) => [
+          {
+            id: `${item.id}-user`,
+            role: 'user' as const,
+            content: item.question,
+            timestamp: item.createdAt,
+          },
+          {
+            id: `${item.id}-assistant`,
+            role: 'assistant' as const,
+            content: item.answer,
+            isStreaming: false,
+            confidenceScore: item.confidence,
+            citations: item.citations,
+            agentSteps: item.agentSteps,
+            timestamp: item.createdAt,
+          },
+        ])
+
+        setMessages(hydrated)
+
+        // Surface the most recent query's citations on load
+        const lastCitations = items.at(-1)?.citations ?? []
+        if (lastCitations.length > 0) {
+          setActiveCitations(lastCitations)
+        }
+      } catch (error) {
+        console.error('[useQueryStream] loadHistory failed:', error)
+      } finally {
+        setIsHistoryLoading(false)
+      }
+    }
+
+    void loadHistory()
+  }, [selectedDocId])
 
   const clearMessages = useCallback(() => {
     setMessages([])
@@ -99,6 +156,9 @@ export function useQueryStream(selectedDocId: string | null) {
                   setActiveCitations(payload.citations)
                   setIsCitationsOpen(true)
                 }
+                if (payload.remainingQueries !== undefined) {
+                  setRemainingQueries(payload.remainingQueries)
+                }
               }
             } catch {
               // Malformed JSON line — skip silently.
@@ -157,6 +217,8 @@ export function useQueryStream(selectedDocId: string | null) {
     isCitationsOpen,
     setIsCitationsOpen,
     isStreaming,
+    isHistoryLoading,
+    remainingQueries,
     handleSubmit,
     clearMessages,
   }
