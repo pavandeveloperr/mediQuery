@@ -39,6 +39,16 @@ export interface RAGStreamPayload {
   error?: string
 }
 
+export interface QueryHistoryItem {
+  id: string
+  question: string
+  answer: string
+  confidence: number
+  agentSteps: AgentStep[]
+  citations: MedicalChunk[]
+  createdAt: string
+}
+
 // ── UI types ──────────────────────────────────────────────────────────────────
 
 export type DocumentStatus = 'processing' | 'ready' | 'failed'

@@ -29,8 +29,28 @@ Use this document as the single source of truth for global data shapes, schema s
 ### Mock-to-real replacement points (Phase 3 hookup)
 - `AppShell` `INITIAL_DOCUMENTS` → ✅ replaced with `GET /api/documents` on mount + 3s polling for processing docs
 - `AppShell` `handleUploadFile` → ✅ replaced with FormData `POST /api/documents/upload` + optimistic UI
-- `AppShell` `simulateStream` → ⬜ Phase 3: replace with SSE fetch to `POST /api/query`
-- `QueryWorkspace` `MOCK_CITATIONS` / `MOCK_AGENT_STEPS` → ⬜ Phase 3: arrive via SSE `RAGStreamPayload`
+- `AppShell` `simulateStream` → ✅ replaced with SSE fetch to `POST /api/query`
+- `QueryWorkspace` `MOCK_CITATIONS` / `MOCK_AGENT_STEPS` → ✅ arrive via SSE `RAGStreamPayload`
+
+---
+
+### Production Polish & Bug Fixes (commit e77d72b — 2026-05-18)
+
+| Area | What changed | File(s) |
+|------|-------------|---------|
+| **Gemini 429 handling** | `RateLimitError` class + `isGemini429` + `withRetry` added to `gemini.ts`. `generateText` (reformulation) retries once with delay from error body. `streamGenerateText` fails fast and throws `RateLimitError` immediately — no retry on the user-facing stream path. | `src/lib/ai/gemini.ts` |
+| **Silent stream failure** | Route catch block was calling `sendDone()` with no message. Now sends `sendPayload({ token: '', error: message })` first so the frontend always receives something. | `src/app/api/query/route.ts` |
+| **Frozen blinking cursor** | `UIMessage.isStreaming` was only cleared on `payload.citations` arrival. `finally` block in hook now clears it unconditionally on any exit path. `payload.error` handler also sets `isStreaming: false`. | `src/hooks/use-query-stream.ts` |
+| **Quota chip on load** | Chip was `null` until after first successful query. New `GET /api/query/quota` endpoint counts Prisma rows (no Redis side-effect); hook fetches it on mount via `useEffect([], [])`. | `src/app/api/query/quota/route.ts`, `src/hooks/use-query-stream.ts` |
+| **Global rate limit** | Redis limiter was per-user (`userId` key) but the Gemini API key is a shared global pool. Switched to `GLOBAL_RATE_LIMIT_KEY = 'global'` so all users draw from one 20/day bucket. Quota display also counts all users. | `src/app/api/query/route.ts`, `src/app/api/query/quota/route.ts` |
+| **UI** | Email moved from navbar to DocumentSidebar bottom section, displayed beneath the username. | `src/components/features/AppShell.tsx`, `src/components/features/DocumentSidebar.tsx` |
+| **Constants** | Added `DAILY_QUERY_LIMIT`, `GLOBAL_RATE_LIMIT_KEY`, `GEMINI_RATE_LIMIT_MAX_RETRIES`, `GEMINI_RATE_LIMIT_FALLBACK_DELAY_MS` — no more magic numbers scattered across files. | `src/constants/ai.ts` |
+| **Types** | Added `error?: string` to `RAGStreamPayload` — dedicated channel for backend errors through the SSE stream. | `src/types/index.ts` |
+
+#### Key architectural decisions made
+- **Redis = hard enforcement (global), Prisma = display only.** Redis blocks the request before Gemini is called. Prisma counts rows for the chip — read-only, no rate-limit side effects.
+- **`withRetry` only on `generateText`, not `streamGenerateText`.** Retrying a user-facing stream would show a frozen UI for 10+ seconds. Background reformulation can afford a short wait.
+- **Error message controlled at the API boundary (`route.ts`), not in `gemini.ts`.** The `RateLimitError` message in `gemini.ts` is for server logs; the customer-facing copy lives in `route.ts` where it can be changed without touching AI logic.
 
 ---
 
