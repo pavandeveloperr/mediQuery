@@ -1,16 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { BookOpen } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { useDocuments } from '@/hooks/use-documents'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import { useQueryStream } from '@/hooks/use-query-stream'
+import DashboardNav from '@/components/features/DashboardNav'
 import DocumentSidebar from '@/components/features/DocumentSidebar'
 import QueryWorkspace from '@/components/features/QueryWorkspace'
 import SourceCitations from '@/components/features/SourceCitations'
 import { UI_LABELS } from '@/constants/ui'
-import { DAILY_QUERY_LIMIT } from '@/constants/ai'
+import { PAGE_ROUTES } from '@/constants/routes'
 
 interface Props {
   userName: string | null
@@ -55,33 +55,10 @@ export default function AppShell({ userName, userEmail, userImage }: Props) {
 
   return (
     <div className="flex h-full flex-col bg-slate-50">
-      <nav className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-5">
-        <div className="flex items-center gap-2">
-          <BookOpen className="h-4 w-4 text-blue-600" />
-          <span className="text-sm font-semibold text-slate-800">{UI_LABELS.APP_TITLE}</span>
-        </div>
-        <div className="flex items-center gap-4">
-          {remainingQueries !== null && (
-            <span
-              className={`hidden rounded-full px-2.5 py-0.5 text-xs font-medium sm:block ${
-                remainingQueries <= 5
-                  ? 'bg-rose-100 text-rose-600'
-                  : 'bg-slate-100 text-slate-500'
-              }`}
-              title="Queries remaining today"
-            >
-              {remainingQueries} / {DAILY_QUERY_LIMIT} left
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={() => setIsSignOutModalOpen(true)}
-            className="rounded-lg px-3 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
-          >
-            {UI_LABELS.SIGN_OUT}
-          </button>
-        </div>
-      </nav>
+      <DashboardNav
+        remainingQueries={remainingQueries}
+        onSignOut={() => setIsSignOutModalOpen(true)}
+      />
 
       <div className="flex flex-1 overflow-hidden">
         <DocumentSidebar
@@ -125,11 +102,11 @@ export default function AppShell({ userName, userEmail, userImage }: Props) {
 
       <ConfirmModal
         isOpen={isSignOutModalOpen}
-        title="Sign out?"
-        subtitle="You'll be returned to the login page."
-        confirmLabel="Sign out"
+        title={UI_LABELS.SIGN_OUT_TITLE}
+        subtitle={UI_LABELS.SIGN_OUT_SUBTITLE}
+        confirmLabel={UI_LABELS.SIGN_OUT}
         cancelLabel="Cancel"
-        onConfirm={() => void signOut({ callbackUrl: '/' })}
+        onConfirm={() => void signOut({ callbackUrl: PAGE_ROUTES.HOME })}
         onCancel={() => setIsSignOutModalOpen(false)}
       />
     </div>

@@ -11,6 +11,8 @@ export const CHUNK_OVERLAP_CHARS = 50
 export const EMBEDDING_BATCH_SIZE = 1
 export const EMBEDDING_BATCH_DELAY_MS = 500
 
+export const NOT_FOUND_MESSAGE = "Information not found in the patient's medical timeline."
+
 export const SIMILARITY_THRESHOLD = 0.75
 export const MAX_RETRIEVED_CHUNKS = 5
 export const MAX_AGENT_REFORMULATIONS = 1

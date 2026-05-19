@@ -2,17 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth/auth'
 import { prisma } from '@/lib/db/prisma'
-import type { AgentStep, MedicalChunk } from '@/types'
-
-export interface QueryHistoryItem {
-  id: string
-  question: string
-  answer: string
-  confidence: number
-  agentSteps: AgentStep[]
-  citations: MedicalChunk[]
-  createdAt: string
-}
+import type { AgentStep, MedicalChunk, QueryHistoryItem } from '@/types'
 
 export async function GET(request: NextRequest) {
   try {

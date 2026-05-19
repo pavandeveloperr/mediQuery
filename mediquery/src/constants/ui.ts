@@ -20,6 +20,12 @@ export const UI_LABELS = {
   DOC_PROCESSING_DESCRIPTION: 'Extracting text and building vector embeddings. This usually takes under a minute.',
   DOC_FAILED_TITLE: 'Processing failed',
   DOC_FAILED_DESCRIPTION: 'Delete this document from the sidebar and upload it again to retry.',
+  RATE_LIMIT_TOAST: 'Daily query limit reached — 20 queries per day',
+  QUERY_ERROR_TOAST: 'Query failed — please try again',
+  QUERY_ERROR_CONTENT: 'An error occurred. Please try again.',
+  SIGN_OUT_TITLE: 'Sign out?',
+  SIGN_OUT_SUBTITLE: "You'll be returned to the login page.",
+  QUOTA_TOOLTIP: 'Queries remaining today',
 } as const
 
 export const SUGGESTED_QUESTIONS = [

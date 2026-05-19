@@ -2,20 +2,29 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
+import { useQueryHistory } from '@/hooks/use-query-history'
+import { useQueryQuota } from '@/hooks/use-query-quota'
 import type { UIMessage, MedicalChunk, RAGStreamPayload } from '@/types'
-import type { QueryHistoryItem } from '@/app/api/queries/route'
+import { API_ROUTES } from '@/constants/routes'
+import { UI_LABELS } from '@/constants/ui'
 
 export function useQueryStream(selectedDocId: string | null) {
-  const [messages, setMessages] = useState<UIMessage[]>([])
+  const { messages, setMessages, lastCitations, isHistoryLoading } = useQueryHistory(selectedDocId)
+  const { remainingQueries, setRemainingQueries } = useQueryQuota()
+
   const [activeCitations, setActiveCitations] = useState<MedicalChunk[]>([])
   const [isCitationsOpen, setIsCitationsOpen] = useState(true)
   const [isStreaming, setIsStreaming] = useState(false)
-  const [isHistoryLoading, setIsHistoryLoading] = useState(false)
-  const [remainingQueries, setRemainingQueries] = useState<number | null>(null)
+
   const streamingRef = useRef(false)
   const abortRef = useRef<AbortController | null>(null)
 
-  // Cancel any in-flight stream on unmount
+  // Surface the most recent query's citations when history loads.
+  useEffect(() => {
+    if (lastCitations.length > 0) setActiveCitations(lastCitations)
+  }, [lastCitations])
+
+  // Cancel any in-flight stream on unmount.
   useEffect(() => {
     return () => {
       abortRef.current?.abort()
@@ -23,78 +32,10 @@ export function useQueryStream(selectedDocId: string | null) {
     }
   }, [])
 
-  // Populate the quota chip immediately on mount without waiting for a query.
-  useEffect(() => {
-    async function fetchQuota() {
-      try {
-        const res = await fetch('/api/query/quota')
-        if (!res.ok) return
-        const data = (await res.json()) as { remaining: number }
-        setRemainingQueries(data.remaining)
-      } catch (error) {
-        console.error('[useQueryStream] fetchQuota failed:', error)
-      }
-    }
-    void fetchQuota()
-  }, [])
-
-  // Load query history whenever the selected document changes
-  useEffect(() => {
-    if (!selectedDocId) {
-      setMessages([])
-      setActiveCitations([])
-      return
-    }
-
-    async function loadHistory() {
-      setIsHistoryLoading(true)
-      setMessages([])
-      try {
-        const res = await fetch(`/api/queries?documentId=${selectedDocId}`)
-        if (!res.ok) return
-
-        const items: QueryHistoryItem[] = await res.json()
-
-        const hydrated: UIMessage[] = items.flatMap((item) => [
-          {
-            id: `${item.id}-user`,
-            role: 'user' as const,
-            content: item.question,
-            timestamp: item.createdAt,
-          },
-          {
-            id: `${item.id}-assistant`,
-            role: 'assistant' as const,
-            content: item.answer,
-            isStreaming: false,
-            confidenceScore: item.confidence,
-            citations: item.citations,
-            agentSteps: item.agentSteps,
-            timestamp: item.createdAt,
-          },
-        ])
-
-        setMessages(hydrated)
-
-        // Surface the most recent query's citations on load
-        const lastCitations = items.at(-1)?.citations ?? []
-        if (lastCitations.length > 0) {
-          setActiveCitations(lastCitations)
-        }
-      } catch (error) {
-        console.error('[useQueryStream] loadHistory failed:', error)
-      } finally {
-        setIsHistoryLoading(false)
-      }
-    }
-
-    void loadHistory()
-  }, [selectedDocId])
-
   const clearMessages = useCallback(() => {
     setMessages([])
     setActiveCitations([])
-  }, [])
+  }, [setMessages])
 
   const streamQuery = useCallback(
     async (messageId: string, question: string, docId: string) => {
@@ -104,7 +45,7 @@ export function useQueryStream(selectedDocId: string | null) {
       setIsStreaming(true)
 
       try {
-        const response = await fetch('/api/query', {
+        const response = await fetch(API_ROUTES.QUERY, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ question, documentId: docId }),
@@ -113,14 +54,13 @@ export function useQueryStream(selectedDocId: string | null) {
 
         if (!response.ok || !response.body) {
           if (response.status === 429) {
-            toast.error('Daily query limit reached — 20 queries per day')
+            toast.error(UI_LABELS.RATE_LIMIT_TOAST)
           }
           throw new Error(`Query failed with status ${response.status}`)
         }
 
         const reader = response.body.getReader()
         const decoder = new TextDecoder()
-        // Incomplete SSE lines accumulate here across multiple read() chunks.
         let buffer = ''
 
         while (streamingRef.current) {
@@ -143,50 +83,7 @@ export function useQueryStream(selectedDocId: string | null) {
 
             try {
               const payload = JSON.parse(rawData) as RAGStreamPayload
-
-              if (payload.token) {
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === messageId ? { ...m, content: m.content + payload.token } : m
-                  )
-                )
-              }
-
-              // Error event — show the message and stop streaming.
-              if (payload.error !== undefined) {
-                toast.error(payload.error)
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === messageId
-                      ? { ...m, content: payload.error!, isStreaming: false }
-                      : m
-                  )
-                )
-              }
-
-              // Citations present means this is the final metadata event.
-              if (payload.citations !== undefined) {
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === messageId
-                      ? {
-                          ...m,
-                          isStreaming: false,
-                          confidenceScore: payload.confidenceScore,
-                          citations: payload.citations,
-                          agentSteps: payload.steps,
-                        }
-                      : m
-                  )
-                )
-                if (payload.citations.length > 0) {
-                  setActiveCitations(payload.citations)
-                  setIsCitationsOpen(true)
-                }
-                if (payload.remainingQueries !== undefined) {
-                  setRemainingQueries(payload.remainingQueries)
-                }
-              }
+              handlePayload(payload, messageId)
             } catch {
               // Malformed JSON line — skip silently.
             }
@@ -197,35 +94,82 @@ export function useQueryStream(selectedDocId: string | null) {
 
         console.error('[useQueryStream] stream error:', error)
         const is429 = error instanceof Error && error.message.includes('429')
-        if (!is429) toast.error('Query failed — please try again')
+        if (!is429) toast.error(UI_LABELS.QUERY_ERROR_TOAST)
+
         setMessages((prev) =>
           prev.map((m) =>
             m.id === messageId
-              ? { ...m, content: 'An error occurred. Please try again.', isStreaming: false }
+              ? { ...m, content: UI_LABELS.QUERY_ERROR_CONTENT, isStreaming: false }
               : m
           )
         )
       } finally {
         streamingRef.current = false
         setIsStreaming(false)
-        // Safety net: clear the blinking cursor on the message regardless of how the stream ended.
+        // Safety net: clear blinking cursor regardless of how the stream exited.
         setMessages((prev) =>
           prev.map((m) => (m.id === messageId && m.isStreaming ? { ...m, isStreaming: false } : m))
         )
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   )
+
+  function handlePayload(payload: RAGStreamPayload, messageId: string) {
+    if (payload.token) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId ? { ...m, content: m.content + payload.token } : m
+        )
+      )
+    }
+
+    if (payload.error !== undefined) {
+      toast.error(payload.error)
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId
+            ? { ...m, content: payload.error ?? '', isStreaming: false }
+            : m
+        )
+      )
+    }
+
+    if (payload.citations !== undefined) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId
+            ? {
+                ...m,
+                isStreaming: false,
+                confidenceScore: payload.confidenceScore,
+                citations: payload.citations,
+                agentSteps: payload.steps,
+              }
+            : m
+        )
+      )
+      if (payload.citations.length > 0) {
+        setActiveCitations(payload.citations)
+        setIsCitationsOpen(true)
+      }
+      if (payload.remainingQueries !== undefined) {
+        setRemainingQueries(payload.remainingQueries)
+      }
+    }
+  }
 
   const handleSubmit = useCallback(
     (question: string) => {
       if (!selectedDocId) return
 
+      const now = new Date().toISOString()
       const userMsg: UIMessage = {
         id: `msg-${Date.now()}-user`,
         role: 'user',
         content: question,
-        timestamp: new Date().toISOString(),
+        timestamp: now,
       }
       const assistantId = `msg-${Date.now()}-assistant`
       const assistantMsg: UIMessage = {
@@ -233,13 +177,13 @@ export function useQueryStream(selectedDocId: string | null) {
         role: 'assistant',
         content: '',
         isStreaming: true,
-        timestamp: new Date().toISOString(),
+        timestamp: now,
       }
 
       setMessages((prev) => [...prev, userMsg, assistantMsg])
       void streamQuery(assistantId, question, selectedDocId)
     },
-    [selectedDocId, streamQuery]
+    [selectedDocId, streamQuery, setMessages]
   )
 
   return {
