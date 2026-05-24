@@ -86,6 +86,7 @@ export default function AppShell({ userName, userEmail, userImage }: Props) {
           <SourceCitations
             citations={activeCitations}
             documents={documents}
+            isStreaming={isStreaming}
             onClose={() => setIsCitationsOpen(false)}
           />
         ) : (
