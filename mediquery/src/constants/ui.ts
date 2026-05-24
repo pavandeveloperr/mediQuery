@@ -26,6 +26,7 @@ export const UI_LABELS = {
   SIGN_OUT_TITLE: 'Sign out?',
   SIGN_OUT_SUBTITLE: "You'll be returned to the login page.",
   QUOTA_TOOLTIP: 'Queries remaining today',
+  AGENT_THINKING: 'Reasoning…',
 } as const
 
 export const SUGGESTED_QUESTIONS = [

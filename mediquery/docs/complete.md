@@ -54,6 +54,57 @@ Use this document as the single source of truth for global data shapes, schema s
 
 ---
 
+---
+
+### Code Quality Refactor (commit 060f4a8 — 2026-05-19) — DEPLOYED
+
+| Area | What changed | File(s) |
+|------|-------------|---------|
+| **Hook split** | `useQueryStream` was doing four unrelated things (history loading, quota fetching, SSE streaming, citation state). Split into three focused hooks composed cleanly. | `src/hooks/use-query-history.ts` (new), `src/hooks/use-query-quota.ts` (new), `src/hooks/use-query-stream.ts` (slimmed) |
+| **Nav extraction** | Inline `<nav>` block lifted out of `AppShell` into a dedicated component with its own `QuotaChip` sub-component. | `src/components/features/DashboardNav.tsx` (new), `src/components/features/AppShell.tsx` |
+| **Prompt extraction** | Prompt strings were tangled with orchestration logic in `agent.ts`. Moved to pure builder functions in a dedicated module — prepares for future prompt additions (evaluation, summarization). | `src/lib/ai/prompts.ts` (new), `src/lib/ai/agent.ts` |
+| **Agent helper** | Added `makeStep()` factory in `agent.ts` — eliminates five duplicated `AgentStep` object constructions. | `src/lib/ai/agent.ts` |
+| **Route constants** | All API and page paths centralized — no more hardcoded strings like `/api/query` scattered in components/hooks. | `src/constants/routes.ts` (new), all consumers |
+| **Type ownership** | `QueryHistoryItem` moved from API route to `src/types/index.ts` — the route and consuming hook now share one definition. | `src/types/index.ts`, `src/app/api/queries/route.ts` |
+| **UI labels** | All hardcoded UI strings (sign-out modal copy, error toasts, quota tooltip) moved to `UI_LABELS`. `AppShell` has zero string literals in JSX. | `src/constants/ui.ts`, `src/components/features/AppShell.tsx` |
+
+**Net result:** 339 insertions, 247 deletions — the refactor shrank total code while adding structure. `AppShell.tsx` dropped from 137 → 114 lines with stricter separation of concerns.
+
+---
+
+### Phase 5: LLM-as-Judge Faithfulness Scoring + Real-Time Agent Trace (uncommitted — 2026-05-20)
+
+**Problem solved:** confidence scores were stuck at 70–72% even on accurate answers because the score was just `avgSimilarity` from retrieval — and cosine similarity on clinical text rarely exceeds 0.85 even for perfectly relevant chunks. Conflated retrieval quality with answer quality.
+
+**Architecture change:** confidence is now a composite of three signals.
+
+| Signal | Weight | What it measures | Source |
+|--------|--------|------------------|--------|
+| Retrieval similarity | 20% | "Did we find relevant chunks?" | Cosine similarity from `retrieveChunks` |
+| Groundedness | 55% | "Is every claim in the answer supported by the chunks?" | LLM-as-judge (Gemini) |
+| Completeness | 25% | "Does the answer fully address the question?" | LLM-as-judge (Gemini) |
+
+| Area | What changed | File(s) |
+|------|-------------|---------|
+| **New AI module** | `evaluateAnswer(question, answer, chunks)` returns `{ groundedness, completeness }`. Parses Gemini's JSON output defensively (tolerates code fences / surrounding prose), clamps to [0,1], falls back to neutral 0.7/0.7 on parse failure so user flow never breaks. | `src/lib/ai/evaluation.ts` (new) |
+| **Evaluation prompt** | Strict clinical RAG evaluator prompt — returns single-line JSON `{"groundedness":0.00,"completeness":0.00}`. Returns 1.0 groundedness + 0.0 completeness for the `NOT_FOUND_MESSAGE` (correct refusal). | `src/lib/ai/prompts.ts` |
+| **Agent flow** | `runAgent` now runs evaluation after answer streams complete. Composite score replaces the single-similarity assignment. New EVALUATE step is pushed to the trace. | `src/lib/ai/agent.ts` |
+| **Step union** | `AgentStep.action` extended with `'EVALUATE'`. Violet chip + `Evaluate` label in the trace UI. | `src/types/index.ts`, `src/components/ui/AgentStepTrace.tsx` |
+| **Real-time step streaming** | Agent steps are now streamed individually via SSE as they happen (new `step?: AgentStep` field on `RAGStreamPayload`). Frontend appends to `message.agentSteps` as each event arrives instead of receiving them all at once at the end. | `src/types/index.ts`, `src/app/api/query/route.ts`, `src/lib/ai/agent.ts`, `src/hooks/use-query-stream.ts` |
+| **Live thinking indicator** | While answer is waiting (`isStreaming && content === ''`), the bubble shows the latest step's `thought` with a pulsing Sparkles icon instead of an empty blinking cursor. Once tokens start arriving, it's replaced by the streaming answer + cursor as before. | `src/components/features/QueryWorkspace.tsx` (new `AgentThinkingIndicator`) |
+| **Agent callback contract** | `runAgent` signature changed from `runAgent(question, documentId, onToken)` to `runAgent(question, documentId, { onToken, onStep })` — cleaner contract, room for future callbacks without breaking changes. | `src/lib/ai/agent.ts`, `src/app/api/query/route.ts` |
+| **Confidence badge** | Thresholds unchanged (HIGH ≥0.85, MEDIUM ≥0.70, LOW <0.70) — the *score* was the broken signal, not the bands. Added per-level tooltip explaining what the score means. | `src/components/ui/ConfidenceBadge.tsx` |
+| **Constants** | New `CONFIDENCE_WEIGHT_RETRIEVAL` (0.2), `CONFIDENCE_WEIGHT_GROUNDEDNESS` (0.55), `CONFIDENCE_WEIGHT_COMPLETENESS` (0.25). New `UI_LABELS.AGENT_THINKING` for the pre-step placeholder. | `src/constants/ai.ts`, `src/constants/ui.ts` |
+
+#### Key architectural decisions made
+
+- **One extra Gemini call per query is worth it.** Adding `evaluateAnswer` increases cost ~15–25% per query but raises confidence calibration accuracy substantially — well-grounded answers now naturally cross 0.85 instead of capping at the embedding ceiling.
+- **Evaluator failures degrade gracefully.** If the LLM judge call fails or returns malformed JSON, we fall back to neutral 0.7/0.7 scores. The user-facing answer has already streamed by the time evaluation runs — never sacrifice the user flow for a confidence signal.
+- **Final SSE payload no longer re-sends the steps array.** Steps are streamed individually via `payload.step` events; the frontend builds `agentSteps` incrementally. The terminal payload only carries `citations`, `confidenceScore`, and `remainingQueries`.
+- **Step thought as live status text.** This replaces the "empty bubble + cursor" feel with a visibly working agent — every reformulation and retrieval is surfaced to the user as it happens, not buried in a collapsed trace at the end.
+
+---
+
 ## 1. Database Model Interface Contracts (Prisma)
 When querying or writing data structures, your fields must exactly align with these table configurations:
 

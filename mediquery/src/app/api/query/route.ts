@@ -77,9 +77,14 @@ export async function POST(request: NextRequest) {
         try {
           let fullAnswer = ''
 
-          const result = await runAgent(question, documentId, (token) => {
-            fullAnswer += token
-            sendPayload({ token })
+          const result = await runAgent(question, documentId, {
+            onToken: (token) => {
+              fullAnswer += token
+              sendPayload({ token })
+            },
+            onStep: (step) => {
+              sendPayload({ token: '', step })
+            },
           })
 
           // Persist the completed query to the database.
@@ -96,12 +101,12 @@ export async function POST(request: NextRequest) {
             },
           })
 
-          // Final metadata event — carries citations, confidence, agent trace, and remaining quota.
+          // Final metadata event — carries citations, final confidence, and remaining quota.
+          // Individual steps were already streamed via onStep; no need to re-send them here.
           sendPayload({
             token: '',
             confidenceScore: result.confidenceScore,
             citations: result.citations,
-            steps: result.steps,
             remainingQueries: remaining,
           })
 
