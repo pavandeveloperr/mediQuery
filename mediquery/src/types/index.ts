@@ -24,7 +24,7 @@ export interface MedicalChunk {
 
 export interface AgentStep {
   thought: string
-  action: 'RETRIEVE' | 'REFORMULATE' | 'ANSWER' | 'FAIL'
+  action: 'RETRIEVE' | 'REFORMULATE' | 'ANSWER' | 'EVALUATE' | 'FAIL'
   queryUsed: string
   scoreAchieved?: number
   timestamp: string
@@ -32,9 +32,9 @@ export interface AgentStep {
 
 export interface RAGStreamPayload {
   token: string
+  step?: AgentStep
   confidenceScore?: number
   citations?: MedicalChunk[]
-  steps?: AgentStep[]
   remainingQueries?: number
   error?: string
 }

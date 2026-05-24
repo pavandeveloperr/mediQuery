@@ -9,6 +9,7 @@ const ACTION_LABEL: Record<AgentStep['action'], string> = {
   RETRIEVE: 'Retrieve',
   REFORMULATE: 'Reformulate',
   ANSWER: 'Answer',
+  EVALUATE: 'Evaluate',
   FAIL: 'Failed',
 }
 
@@ -16,6 +17,7 @@ const ACTION_CHIP: Record<AgentStep['action'], string> = {
   RETRIEVE: 'bg-blue-50 text-blue-600',
   REFORMULATE: 'bg-amber-50 text-amber-600',
   ANSWER: 'bg-emerald-50 text-emerald-600',
+  EVALUATE: 'bg-violet-50 text-violet-600',
   FAIL: 'bg-rose-50 text-rose-600',
 }
 

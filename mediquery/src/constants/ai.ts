@@ -23,3 +23,11 @@ export const GLOBAL_RATE_LIMIT_KEY = 'global'
 // Retry config for transient Gemini 429s (RPM window). 1 retry keeps wait time under 15s.
 export const GEMINI_RATE_LIMIT_MAX_RETRIES = 1
 export const GEMINI_RATE_LIMIT_FALLBACK_DELAY_MS = 10_000
+
+// Composite confidence weights — sum to 1.
+// Retrieval similarity alone caps around 0.85 on clinical text; LLM-as-judge groundedness
+// and completeness give the score full headroom into the 0.9+ range when the answer
+// is genuinely well-supported.
+export const CONFIDENCE_WEIGHT_RETRIEVAL = 0.2
+export const CONFIDENCE_WEIGHT_GROUNDEDNESS = 0.55
+export const CONFIDENCE_WEIGHT_COMPLETENESS = 0.25

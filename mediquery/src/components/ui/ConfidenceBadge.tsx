@@ -1,9 +1,18 @@
 type ConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW'
 
+// Score is a composite of retrieval similarity (20%), LLM-judged groundedness
+// (55%), and LLM-judged completeness (25%). Well-supported answers land in the
+// 0.85+ range; partial or weakly-grounded answers fall in 0.65–0.85.
 function getLevel(score: number): ConfidenceLevel {
   if (score >= 0.85) return 'HIGH'
   if (score >= 0.70) return 'MEDIUM'
   return 'LOW'
+}
+
+const LEVEL_TOOLTIP: Record<ConfidenceLevel, string> = {
+  HIGH: 'Answer is well-grounded in retrieved sources',
+  MEDIUM: 'Answer is partially supported by retrieved sources',
+  LOW: 'Answer may be incomplete or weakly supported',
 }
 
 const BADGE_STYLES: Record<ConfidenceLevel, string> = {
@@ -30,6 +39,7 @@ export default function ConfidenceBadge({ score, showScore = false, size = 'sm' 
 
   return (
     <span
+      title={LEVEL_TOOLTIP[level]}
       className={`inline-flex items-center gap-1.5 rounded-full font-medium ring-1 ring-inset ${padding} ${BADGE_STYLES[level]}`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${DOT_STYLES[level]}`} />

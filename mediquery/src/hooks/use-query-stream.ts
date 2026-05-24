@@ -125,6 +125,17 @@ export function useQueryStream(selectedDocId: string | null) {
       )
     }
 
+    if (payload.step !== undefined) {
+      const step = payload.step
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === messageId
+            ? { ...m, agentSteps: [...(m.agentSteps ?? []), step] }
+            : m
+        )
+      )
+    }
+
     if (payload.error !== undefined) {
       toast.error(payload.error)
       setMessages((prev) =>
@@ -145,7 +156,6 @@ export function useQueryStream(selectedDocId: string | null) {
                 isStreaming: false,
                 confidenceScore: payload.confidenceScore,
                 citations: payload.citations,
-                agentSteps: payload.steps,
               }
             : m
         )
@@ -163,6 +173,10 @@ export function useQueryStream(selectedDocId: string | null) {
   const handleSubmit = useCallback(
     (question: string) => {
       if (!selectedDocId) return
+
+      // Clear stale citations from the previous query immediately so the panel
+      // doesn't show old sources while the new stream is in flight.
+      setActiveCitations([])
 
       const now = new Date().toISOString()
       const userMsg: UIMessage = {

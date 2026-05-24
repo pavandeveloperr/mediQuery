@@ -33,6 +33,28 @@ export function DocumentCardSkeleton() {
   )
 }
 
+/** Matches a citation card in SourceCitations */
+export function CitationCardSkeleton() {
+  return (
+    <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <div className="flex items-start justify-between gap-2">
+        <SkeletonLine className="w-3/5" />
+        <SkeletonLine className="w-4" />
+      </div>
+      <div className="flex items-center gap-2">
+        <SkeletonLine className="w-12" />
+        <SkeletonLine className="w-16" />
+      </div>
+      <div className="space-y-1.5 pt-1">
+        <SkeletonLine className="w-full" />
+        <SkeletonLine className="w-full" />
+        <SkeletonLine className="w-4/5" />
+        <SkeletonLine className="w-2/3" />
+      </div>
+    </div>
+  )
+}
+
 /** Matches a user or assistant message bubble in QueryWorkspace */
 export function MessageSkeleton({ role = 'assistant' }: { role?: 'user' | 'assistant' }) {
   return (

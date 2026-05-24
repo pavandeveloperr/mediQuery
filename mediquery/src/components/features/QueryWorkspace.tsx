@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { AlertCircle, Loader2, Send, FileText } from 'lucide-react'
-import type { UIDocument, UIMessage } from '@/types'
+import { AlertCircle, Loader2, Send, FileText, Sparkles } from 'lucide-react'
+import type { UIDocument, UIMessage, AgentStep } from '@/types'
 import AgentStepTrace from '@/components/ui/AgentStepTrace'
 import ConfidenceBadge from '@/components/ui/ConfidenceBadge'
 import { MessageSkeleton } from '@/components/ui/Skeleton'
@@ -14,6 +14,29 @@ interface Props {
   onSubmit: (question: string) => void
   isStreaming: boolean
   isHistoryLoading: boolean
+}
+
+// Keyed on DocumentStatus — defined at module level to avoid re-allocation on every render.
+const DOCUMENT_STATUS_BADGE: Record<UIDocument['status'], { label: string; className: string }> = {
+  ready: { label: 'Ready', className: 'bg-emerald-100 text-emerald-700' },
+  processing: { label: 'Processing…', className: 'bg-amber-100 text-amber-700' },
+  failed: { label: 'Failed', className: 'bg-rose-100 text-rose-700' },
+}
+
+interface AgentThinkingIndicatorProps {
+  latestStep: AgentStep | undefined
+}
+
+// Shown while the agent is working and no tokens have arrived yet — gives the
+// user a live status string instead of a silent empty bubble with a cursor.
+function AgentThinkingIndicator({ latestStep }: AgentThinkingIndicatorProps) {
+  const thought = latestStep?.thought ?? UI_LABELS.AGENT_THINKING
+  return (
+    <div className="flex items-start gap-2 text-sm text-slate-500">
+      <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-pulse text-blue-500" />
+      <span className="italic">{thought}</span>
+    </div>
+  )
 }
 
 function MessageBubble({ message }: { message: UIMessage }) {
@@ -28,6 +51,9 @@ function MessageBubble({ message }: { message: UIMessage }) {
     )
   }
 
+  const isWaitingForFirstToken = message.isStreaming && message.content.length === 0
+  const steps = message.agentSteps ?? []
+
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-2">
@@ -37,13 +63,19 @@ function MessageBubble({ message }: { message: UIMessage }) {
         )}
       </div>
       <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-7 text-slate-800 whitespace-pre-wrap">
-        {message.content}
-        {message.isStreaming && (
-          <span className="ml-0.5 inline-block animate-pulse text-blue-500">▌</span>
+        {isWaitingForFirstToken ? (
+          <AgentThinkingIndicator latestStep={steps.at(-1)} />
+        ) : (
+          <>
+            {message.content}
+            {message.isStreaming && (
+              <span className="ml-0.5 inline-block animate-pulse text-blue-500">▌</span>
+            )}
+          </>
         )}
       </div>
-      {!message.isStreaming && message.agentSteps && message.agentSteps.length > 0 && (
-        <AgentStepTrace steps={message.agentSteps} />
+      {!message.isStreaming && steps.length > 0 && (
+        <AgentStepTrace steps={steps} />
       )}
     </div>
   )
@@ -163,12 +195,7 @@ export default function QueryWorkspace({ selectedDocument, messages, onSubmit, i
     ? UI_LABELS.STREAMING_PLACEHOLDER
     : UI_LABELS.QUERY_PLACEHOLDER
 
-  const STATUS_BADGE: Record<UIDocument['status'], { label: string; className: string }> = {
-    ready: { label: 'Ready', className: 'bg-emerald-100 text-emerald-700' },
-    processing: { label: 'Processing…', className: 'bg-amber-100 text-amber-700' },
-    failed: { label: 'Failed', className: 'bg-rose-100 text-rose-700' },
-  }
-  const badge = STATUS_BADGE[selectedDocument.status]
+  const badge = DOCUMENT_STATUS_BADGE[selectedDocument.status]
 
   const bodyContent =
     isHistoryLoading ? (
