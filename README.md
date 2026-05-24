@@ -1,161 +1,152 @@
-```markdown
-# 🩺 MediQuery — Clinical Document Intelligence Platform
+# MediQuery 🏥
 
-<div align="center">
+> **Clinical Document Intelligence Platform** — Upload medical PDFs, ask natural language questions, and receive grounded, cited answers powered by an Agentic RAG pipeline.
 
-![Next.js](https://img.shields.io/badge/Next.js_16-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS_v4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
-![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white)
-![Gemini](https://img.shields.io/badge/Gemini_AI-8E75B2?style=for-the-badge&logo=google&logoColor=white)
-![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
-
-**MediQuery** is a clinical document intelligence platform that allows users to upload medical PDFs, ask natural language questions, and receive grounded, fully-cited answers through an Agentic RAG (Retrieval-Augmented Generation) pipeline — with zero hallucinations.
-
-[Live Demo](#) · [Report Bug](https://github.com/pavandeveloperr/mediQuery/issues) · [Request Feature](https://github.com/pavandeveloperr/mediQuery/issues)
-
-</div>
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?style=flat-square&logo=tailwindcss)](https://tailwindcss.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?style=flat-square&logo=postgresql)](https://www.postgresql.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-Hosted-3ECF8E?style=flat-square&logo=supabase)](https://supabase.com/)
+[![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?style=flat-square&logo=prisma)](https://www.prisma.io/)
+[![Google Gemini](https://img.shields.io/badge/Gemini-1.5_Pro-4285F4?style=flat-square&logo=google)](https://deepmind.google/technologies/gemini/)
+[![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000?style=flat-square&logo=vercel)](https://vercel.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
 ---
 
 ## 📋 Table of Contents
 
 - [Overview](#-overview)
-- [Features](#-features)
+- [Key Features](#-key-features)
 - [Tech Stack](#-tech-stack)
 - [AI Pipeline Architecture](#-ai-pipeline-architecture)
-- [Database Schema](#-database-schema)
 - [Project Structure](#-project-structure)
+- [Database Schema](#-database-schema)
 - [Getting Started](#-getting-started)
-- [Environment Variables](#-environment-variables)
-- [Development Scripts](#-development-scripts)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Environment Variables](#environment-variables)
+  - [Database Setup](#database-setup)
+  - [Running Locally](#running-locally)
+- [Scripts Reference](#-scripts-reference)
 - [Deployment](#-deployment)
+- [Contributing](#-contributing)
+- [License](#-license)
 
 ---
 
 ## 🔍 Overview
 
-MediQuery solves a core problem in clinical workflows: physicians and researchers spend significant time manually searching through dense medical documents for specific information. MediQuery replaces this with a conversational interface powered by an agentic AI pipeline that:
+**MediQuery** is a full-stack clinical document intelligence platform built for healthcare professionals and researchers. It enables users to upload medical PDFs and interact with their content through a conversational interface backed by a sophisticated, multi-step Agentic RAG (Retrieval-Augmented Generation) pipeline.
 
-- **Retrieves** the most semantically relevant chunks from your uploaded document
-- **Evaluates** retrieval confidence and automatically **reformulates** weak queries
-- **Generates** grounded, source-cited answers streamed token-by-token in real time
-- **Scores** every response with a composite faithfulness + completeness confidence rating
-
-Every answer is traceable back to an exact document chunk — no guessing, no fabrication.
+Unlike naive RAG systems, MediQuery uses an AI agent that autonomously evaluates retrieval confidence and reformulates queries when needed — ensuring answers are always grounded in the source material, with explicit citations to prevent hallucinations.
 
 ---
 
-## ✨ Features
+## ✨ Key Features
 
-| Feature | Description |
-|---|---|
-| 📄 **PDF Ingestion** | Upload medical PDFs; text is extracted, chunked, and embedded automatically |
-| 🔍 **Semantic Search** | Cosine similarity search over 768-dimensional vectors via pgvector |
-| 🤖 **Agentic RAG** | Multi-step agent with auto query reformulation below confidence threshold |
-| 📡 **Real-time Streaming** | Token-by-token answer streaming via Server-Sent Events (SSE) |
-| 🧠 **Live Agent Trace** | Each reasoning step (Retrieve → Reformulate → Answer → Evaluate) streams to the UI in real time |
-| 📊 **Confidence Scoring** | Composite score: retrieval similarity (20%) + LLM-judged faithfulness (55%) + completeness (25%) |
-| 📎 **Source Citations** | Every answer links to exact document chunks with similarity scores |
-| 🔐 **Auth & Rate Limiting** | Google OAuth via NextAuth.js + Upstash Redis global rate limiting (20 queries/day) |
-| 🕓 **Query History** | Persistent per-document query history with full agent traces |
-| 🎨 **Polished UI** | Skeleton loaders, streaming indicators, confidence badges, collapsible agent trace |
+- 📄 **PDF Ingestion** — Upload clinical documents for automatic text extraction and intelligent chunking
+- 🤖 **Agentic RAG Pipeline** — Multi-step AI agent with autonomous query reformulation on low-confidence retrievals
+- 🔍 **Semantic Vector Search** — Cosine similarity search over 768-dimensional embeddings via pgvector
+- 💬 **Streamed Responses** — Real-time answer streaming from Gemini 1.5 Pro with source citations
+- 🔐 **Google OAuth** — Secure authentication via NextAuth.js
+- ⚡ **Rate Limiting** — Upstash Redis-backed API protection
+- 📊 **RAG Evaluation** — Built-in LLM-as-judge faithfulness and relevance scoring
+- 🧾 **Cost & Token Tracking** — Per-query token count, USD cost, and agent step logging
 
 ---
 
 ## 🛠 Tech Stack
 
-### Frontend
-| Technology | Purpose |
+| Layer | Technology |
 |---|---|
-| [Next.js 16](https://nextjs.org/) (App Router) | Full-stack React framework with file-based routing and API routes |
-| [TypeScript](https://www.typescriptlang.org/) (Strict Mode) | End-to-end type safety across the entire codebase |
-| [Tailwind CSS v4](https://tailwindcss.com/) | Utility-first styling with PostCSS |
-| [shadcn/ui](https://ui.shadcn.com/) | Accessible, composable UI primitives |
-| [Sonner](https://sonner.emilkowal.ski/) | Toast notifications |
-
-### Backend & AI
-| Technology | Purpose |
-|---|---|
-| [Next.js API Routes](https://nextjs.org/docs/app/building-your-application/routing/route-handlers) | RESTful API handlers and SSE streaming endpoints |
-| [Google Gemini API](https://ai.google.dev/) | `gemini-1.5-pro` for generation · `text-embedding-004` for 768-dim embeddings |
-| [Prisma ORM](https://www.prisma.io/) | Type-safe database access and schema migrations |
-| [PostgreSQL + pgvector](https://supabase.com/) | Vector storage and cosine similarity search hosted on Supabase |
-| [NextAuth.js](https://next-auth.js.org/) | Google OAuth authentication |
-| [Upstash Redis](https://upstash.com/) | Global rate limiting (20 queries/day shared pool) |
+| **Framework** | Next.js 16 (App Router) |
+| **Language** | TypeScript (Strict Mode) |
+| **Styling** | Tailwind CSS v4, PostCSS, shadcn/ui |
+| **Database** | PostgreSQL + pgvector (Supabase) |
+| **ORM** | Prisma |
+| **AI Generation** | Google Gemini API (`gemini-1.5-pro`) |
+| **Embeddings** | Google `text-embedding-004` (768 dims) |
+| **Authentication** | NextAuth.js (Google OAuth 2.0) |
+| **Rate Limiting** | Upstash Redis |
+| **Deployment** | Vercel |
 
 ---
 
 ## 🧠 AI Pipeline Architecture
 
-MediQuery's core intelligence is a multi-step agentic loop. Every query passes through the following stages:
+MediQuery's intelligence layer is a five-stage agentic pipeline designed for accuracy and grounded output.
 
 ```
-User Question
-      │
-      ▼
-┌─────────────────────┐
-│  1. EMBED QUESTION  │  text-embedding-004 → 768-dim vector
-└─────────────────────┘
-      │
-      ▼
-┌─────────────────────┐
-│  2. RETRIEVE CHUNKS │  Cosine similarity search via pgvector (top 5 chunks)
-└─────────────────────┘
-      │
-      ▼
-┌─────────────────────┐
-│  3. EVALUATE SCORE  │  avgSimilarity ≥ 0.75?
-└─────────────────────┘
-      │                 \
-   YES │                 NO
-      │                  ▼
-      │        ┌──────────────────────┐
-      │        │  4. REFORMULATE      │  gemini-1.5-pro rewrites query with clinical terminology
-      │        └──────────────────────┘
-      │                  │
-      │              Re-Retrieve
-      │                  │
-      ▼                  ▼
-┌─────────────────────────────────┐
-│  5. GENERATE ANSWER             │  Stream grounded answer token-by-token via SSE
-│     + LLM-as-Judge Evaluation   │  Faithfulness (55%) + Completeness (25%) + Retrieval (20%)
-└─────────────────────────────────┘
-      │
-      ▼
-Streamed Answer + Citations + Confidence Score + Agent Trace
+┌─────────────────────────────────────────────────────────────────────┐
+│                        MediQuery RAG Pipeline                       │
+├─────────┬──────────────┬───────────────┬──────────────┬────────────┤
+│  Stage  │    Input     │   Operation   │    Output    │   Store    │
+├─────────┼──────────────┼───────────────┼──────────────┼────────────┤
+│   1     │  PDF Upload  │ Text Extract  │  Raw Text    │    —       │
+│   2     │  Raw Text    │   Chunking    │  512c/50ovlp │    —       │
+│         │              │  (512 chars,  │              │            │
+│         │              │  50 overlap)  │              │            │
+│   3     │  Text Chunks │  Embed via    │  768-dim     │ pgvector   │
+│         │              │  text-emb-004 │  Vectors     │            │
+│   4     │  User Query  │  Embed →      │  Top-K       │    —       │
+│         │              │  Cosine Sim   │  Chunks      │            │
+│   5     │  Top-K +     │  Agent Eval   │  Reformulate │    —       │
+│         │  Similarity  │  (< 0.75?)    │  or Proceed  │            │
+│   6     │  Context     │  Gemini Gen   │  Streamed    │  Query DB  │
+│         │              │  + Citations  │  Answer      │            │
+└─────────┴──────────────┴───────────────┴──────────────┴────────────┘
 ```
 
-### Agent Steps (Streamed to UI in Real Time)
+### Stage Breakdown
 
-| Step | Action | Description |
-|---|---|---|
-| 🔵 | `RETRIEVE` | Embeds question and searches document vector space |
-| 🟡 | `REFORMULATE` | Rewrites query using clinical terminology when confidence is low |
-| 🟢 | `ANSWER` | Generates grounded answer from top-k retrieved chunks |
-| 🟣 | `EVALUATE` | LLM-as-judge scores faithfulness and completeness of the answer |
-| 🔴 | `FAIL` | No relevant chunks found; returns `"Information not found"` |
+- **Stage 1 — Ingestion:** Uploaded PDFs are parsed and raw text is extracted page-by-page.
+- **Stage 2 — Chunking:** Text is split into 512-character chunks with a 50-character overlap to preserve context across boundaries.
+- **Stage 3 — Embedding & Storage:** Each chunk is embedded using Google's `text-embedding-004` model (768 dimensions) and stored in PostgreSQL via pgvector.
+- **Stage 4 — Retrieval:** The user's question is embedded and a cosine similarity search is performed against stored chunk vectors to surface the most relevant context.
+- **Stage 5 — Agent Evaluation:** The AI agent inspects the top retrieval similarity score. If it falls below the **0.75 threshold**, the agent autonomously reformulates the query and re-retrieves before proceeding.
+- **Stage 6 — Generation:** Verified context is passed to `gemini-1.5-pro`, which streams the final answer with strict source grounding and inline citations.
 
-### Confidence Score Breakdown
+---
+
+## 📁 Project Structure
 
 ```
-Composite Score = (0.20 × Retrieval Similarity)
-                + (0.55 × LLM Faithfulness)
-                + (0.25 × LLM Completeness)
+mediquery/
+├── prisma/
+│   └── schema.prisma             # Database schema and model definitions
+├── src/
+│   ├── app/                      # Next.js App Router — pages and API routes
+│   │   ├── api/                  # Backend API route handlers
+│   │   ├── (auth)/               # Authentication pages
+│   │   └── (dashboard)/          # Protected application pages
+│   ├── components/               # Reusable UI and feature layout components
+│   │   ├── ui/                   # shadcn/ui base primitives
+│   │   └── features/             # Domain-specific composite components
+│   ├── lib/
+│   │   ├── ai/                   # Core AI pipeline modules
+│   │   │   ├── gemini.ts         # Gemini API client and generation logic
+│   │   │   ├── embeddings.ts     # text-embedding-004 vector utilities
+│   │   │   ├── chunker.ts        # Text chunking with overlap strategy
+│   │   │   └── agent.ts          # Agentic RAG orchestrator
+│   │   └── db/
+│   │       └── prisma.ts         # Prisma client singleton
+│   └── types/                    # TypeScript interfaces and type definitions
+├── .env.example                  # Environment variable template
+├── next.config.ts                # Next.js configuration
+├── tailwind.config.ts            # Tailwind CSS configuration
+├── postcss.config.mjs            # PostCSS configuration
+└── package.json
 ```
-
-| Badge | Score Range | Meaning |
-|---|---|---|
-| 🟢 HIGH | ≥ 0.85 | Answer is well-grounded in retrieved sources |
-| 🟡 MEDIUM | 0.70 – 0.84 | Answer is partially supported |
-| 🔴 LOW | < 0.70 | Answer may be incomplete or weakly supported |
 
 ---
 
 ## 🗄 Database Schema
 
+MediQuery uses five Prisma models to manage the full document-to-answer lifecycle.
+
 ```prisma
+// User — OAuth-backed account, owns documents and queries
 model User {
   id        String     @id @default(cuid())
   email     String     @unique
@@ -165,115 +156,53 @@ model User {
   queries   Query[]
 }
 
+// Document — Represents an uploaded PDF
 model Document {
   id          String   @id @default(cuid())
   name        String
   storagePath String
-  fileSize    Int?
-  pageCount   Int?
-  status      String   @default("processing") // processing | ready | failed
+  fileSize    Int
+  pageCount   Int
+  status      String   @default("processing")
+  chunks      Chunk[]
   userId      String
   user        User     @relation(fields: [userId], references: [id])
-  chunks      Chunk[]
-  queries     Query[]
-  createdAt   DateTime @default(now())
 }
 
+// Chunk — Individual text node with vector embedding
 model Chunk {
   id         String   @id @default(cuid())
   content    String
   chunkIndex Int
-  tokenCount Int?
-  embedding  Unsupported("vector(768)")?
+  tokenCount Int
+  embedding  Float[]  // pgvector column (768 dims)
   documentId String
-  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  document   Document @relation(fields: [documentId], references: [id])
 }
 
+// Query — Full AI transaction log
 model Query {
-  id         String   @id @default(cuid())
+  id         String  @id @default(cuid())
   question   String
   answer     String
   confidence Float
-  tokenCount Int?
-  costUsd    Float?
-  agentSteps Json
-  sources    Json
+  tokenCount Int
+  costUsd    Float
+  agentSteps Json    // Array of agent reasoning steps
+  sources    Json    // Array of cited chunk references
   userId     String
-  documentId String
-  user       User     @relation(fields: [userId], references: [id])
-  document   Document @relation(fields: [documentId], references: [id])
-  createdAt  DateTime @default(now())
+  user       User    @relation(fields: [userId], references: [id])
 }
 
+// EvalResult — RAG quality metrics per evaluation run
 model EvalResult {
   id            String   @id @default(cuid())
-  faithfulness  Float
-  relevance     Float
-  precision     Float
+  faithfulness  Float    // LLM-as-judge faithfulness score
+  relevance     Float    // Retrieval relevance score
+  precision     Float    // Context precision score
   questionCount Int
   createdAt     DateTime @default(now())
 }
-```
-
----
-
-## 📁 Project Structure
-
-```
-mediquery/
-├── src/
-│   ├── app/                        # Next.js App Router
-│   │   ├── (auth)/                 # Login / signup pages
-│   │   ├── api/
-│   │   │   ├── documents/          # Upload, list, delete documents
-│   │   │   ├── query/              # POST /query (SSE streaming), GET /query/quota
-│   │   │   └── queries/            # GET /queries (query history)
-│   │   └── dashboard/              # Main dashboard page
-│   │
-│   ├── components/
-│   │   ├── features/               # Composed, stateful feature blocks
-│   │   │   ├── AppShell.tsx        # Root three-panel layout
-│   │   │   ├── DashboardNav.tsx    # Top nav with quota chip
-│   │   │   ├── DocumentSidebar.tsx # Left panel — upload, select, delete docs
-│   │   │   ├── QueryWorkspace.tsx  # Center panel — messages + streaming
-│   │   │   └── SourceCitations.tsx # Right panel — cited chunks
-│   │   └── ui/                     # Atomic, stateless primitives
-│   │       ├── AgentStepTrace.tsx  # Collapsible agent reasoning accordion
-│   │       ├── ConfidenceBadge.tsx # HIGH / MEDIUM / LOW badge
-│   │       └── Skeleton.tsx        # Shimmer loaders
-│   │
-│   ├── hooks/                      # Custom React hooks (logic/UI separation)
-│   │   ├── use-query-stream.ts     # SSE streaming + state orchestration
-│   │   ├── use-query-history.ts    # Per-document query history
-│   │   ├── use-query-quota.ts      # Remaining queries chip
-│   │   └── use-documents.ts        # Document CRUD + polling
-│   │
-│   ├── lib/
-│   │   ├── ai/
-│   │   │   ├── agent.ts            # Agentic RAG loop (retrieve → evaluate → answer)
-│   │   │   ├── evaluation.ts       # LLM-as-judge faithfulness + completeness scoring
-│   │   │   ├── prompts.ts          # Pure prompt builder functions
-│   │   │   ├── gemini.ts           # Gemini client singleton + streaming helpers
-│   │   │   ├── embeddings.ts       # Batch embed + store chunks
-│   │   │   ├── retrieval.ts        # Cosine similarity search via pgvector
-│   │   │   └── chunker.ts          # 512-char / 50-char overlap sliding window
-│   │   ├── db/
-│   │   │   └── prisma.ts           # Prisma client singleton
-│   │   └── cache/
-│   │       └── rate-limit.ts       # Upstash Redis sliding window limiter
-│   │
-│   ├── constants/                  # App-wide constants (no magic strings anywhere)
-│   │   ├── ai.ts                   # Model names, thresholds, confidence weights
-│   │   ├── routes.ts               # API_ROUTES + PAGE_ROUTES
-│   │   └── ui.ts                   # All UI label strings
-│   │
-│   └── types/
-│       └── index.ts                # Shared TypeScript interfaces
-│
-├── prisma/
-│   └── schema.prisma               # Database schema
-├── .env                            # Environment variables (never commit)
-└── next.config.ts
 ```
 
 ---
@@ -282,173 +211,142 @@ mediquery/
 
 ### Prerequisites
 
-Ensure the following are installed and available:
+Ensure you have the following installed and configured before proceeding:
 
-- [Node.js](https://nodejs.org/) v18+
-- [npm](https://www.npmjs.com/) v9+
-- A [Supabase](https://supabase.com/) project with the `pgvector` extension enabled
-- A [Google AI Studio](https://aistudio.google.com/) API key (Gemini)
-- A [Google Cloud OAuth 2.0](https://console.cloud.google.com/) client (for NextAuth)
-- An [Upstash Redis](https://upstash.com/) database
+- **Node.js** `>= 18.x`
+- **npm** `>= 9.x`
+- A **Supabase** project with the `pgvector` extension enabled
+- A **Google Cloud** project with the Gemini API and OAuth 2.0 credentials configured
+- An **Upstash Redis** database
 
 ### Installation
 
-**1. Clone the repository**
-
 ```bash
-git clone https://github.com/pavandeveloperr/mediQuery.git
-cd mediQuery/mediquery
-```
+# 1. Clone the repository
+git clone https://github.com/your-username/mediquery.git
+cd mediquery
 
-**2. Install dependencies**
-
-```bash
+# 2. Install dependencies
 npm install
 ```
 
-**3. Configure environment variables**
+### Environment Variables
+
+Copy the example environment file and fill in your credentials:
 
 ```bash
 cp .env.example .env
 ```
 
-Fill in all required values — see [Environment Variables](#-environment-variables) below.
+Open `.env` and configure the following variables:
 
-**4. Enable pgvector on Supabase**
+```env
+# ── Database (Supabase + Prisma) ──────────────────────────────────────
+# Pooled connection URL for Prisma query engine (via PgBouncer)
+DATABASE_URL="postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true"
 
-Run the following in your Supabase SQL editor before migrating:
+# Direct connection URL for Prisma Migrate (bypasses PgBouncer)
+DIRECT_URL="postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres"
 
-```sql
-CREATE EXTENSION IF NOT EXISTS vector;
+# ── Google Gemini API ─────────────────────────────────────────────────
+GEMINI_API_KEY="your-gemini-api-key"
+
+# ── NextAuth.js ───────────────────────────────────────────────────────
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="your-nextauth-secret"          # Generate: openssl rand -base64 32
+
+# ── Google OAuth 2.0 ─────────────────────────────────────────────────
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+
+# ── Upstash Redis (Rate Limiting) ─────────────────────────────────────
+UPSTASH_REDIS_REST_URL="https://your-instance.upstash.io"
+UPSTASH_REDIS_REST_TOKEN="your-upstash-token"
 ```
 
-**5. Run database migrations**
+> **Note:** `DATABASE_URL` uses the pooled connection for runtime queries. `DIRECT_URL` uses the direct connection and is required exclusively for Prisma migration commands (`db:migrate`, `db:generate`).
+
+### Database Setup
+
+Run the following commands to initialize your database schema:
 
 ```bash
+# Generate the Prisma client from your schema
+npm run db:generate
+
+# Apply migrations to your Supabase database
 npm run db:migrate
 ```
 
-**6. Start the development server**
+> **pgvector:** Ensure the `vector` extension is enabled in your Supabase project. Run `CREATE EXTENSION IF NOT EXISTS vector;` in the Supabase SQL editor if it is not already active.
+
+### Running Locally
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+The application will be available at [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## 🔑 Environment Variables
-
-Create a `.env` file in the `mediquery/` directory with the following keys:
-
-```env
-# ── Database (Supabase) ────────────────────────────────────────────────────────
-# Pooled connection — used by Prisma at runtime
-DATABASE_URL="postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true"
-
-# Direct connection — used by Prisma Migrate (bypasses PgBouncer)
-DIRECT_URL="postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres"
-
-# ── Authentication (NextAuth.js) ───────────────────────────────────────────────
-NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="your-nextauth-secret"          # openssl rand -base64 32
-
-# ── Google OAuth ───────────────────────────────────────────────────────────────
-GOOGLE_CLIENT_ID="your-google-client-id"
-GOOGLE_CLIENT_SECRET="your-google-client-secret"
-
-# ── Gemini API ─────────────────────────────────────────────────────────────────
-GEMINI_API_KEY="your-gemini-api-key"
-
-# ── Upstash Redis (Rate Limiting) ──────────────────────────────────────────────
-UPSTASH_REDIS_REST_URL="https://your-upstash-url.upstash.io"
-UPSTASH_REDIS_REST_TOKEN="your-upstash-token"
-```
-
-> ⚠️ **Never commit your `.env` file.** It is listed in `.gitignore` by default.
-
----
-
-## 📜 Development Scripts
-
-Run these from the `mediquery/` directory:
+## 📜 Scripts Reference
 
 | Script | Command | Description |
 |---|---|---|
-| Development server | `npm run dev` | Starts Next.js with hot reload at `localhost:3000` |
-| Production build | `npm run build` | Compiles and optimises for production |
-| Linting | `npm run lint` | Validates code quality with ESLint |
-| DB migrate | `npm run db:migrate` | Applies pending Prisma migrations (`prisma migrate dev`) |
-| DB generate | `npm run db:generate` | Regenerates the Prisma client after schema changes |
-| DB studio | `npm run db:studio` | Opens Prisma Studio at `localhost:5555` |
+| **dev** | `npm run dev` | Starts the Next.js development server with hot reload |
+| **build** | `npm run build` | Compiles and bundles the application for production |
+| **lint** | `npm run lint` | Runs ESLint to validate code quality and style |
+| **db:migrate** | `npm run db:migrate` | Executes pending Prisma development migrations |
+| **db:generate** | `npm run db:generate` | Regenerates the Prisma client from `schema.prisma` |
+| **db:studio** | `npm run db:studio` | Opens Prisma Studio, a visual database explorer |
 
 ---
 
 ## ☁️ Deployment
 
-MediQuery is deployed on **Vercel**. The repository is connected to Vercel for automatic deployments on push to `master`.
+MediQuery is optimized for deployment on **Vercel**.
 
-### Deploy Your Own
+### Deploy to Vercel
 
-**1. Fork and connect to Vercel**
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-username/mediquery)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/pavandeveloperr/mediQuery)
+### Manual Deployment Steps
 
-**2. Add all environment variables**
+- **Step 1 — Push to GitHub:** Ensure your repository is connected to your Vercel project.
+- **Step 2 — Configure Environment Variables:** Add all variables from your `.env` file to your Vercel project under **Settings → Environment Variables**. Set `NEXTAUTH_URL` to your production domain (e.g., `https://mediquery.vercel.app`).
+- **Step 3 — Deploy:** Vercel will automatically build and deploy on every push to your main branch.
 
-In your Vercel project dashboard → **Settings → Environment Variables**, add every key listed in [Environment Variables](#-environment-variables).
+### Post-Deployment Checklist
 
-> ⚠️ Set `NEXTAUTH_URL` to your Vercel production domain (e.g. `https://mediquery.vercel.app`).
-
-**3. Configure Google OAuth redirect URI**
-
-In [Google Cloud Console](https://console.cloud.google.com/), add your Vercel domain to the list of authorised redirect URIs:
-
-```
-https://your-app.vercel.app/api/auth/callback/google
-```
-
-**4. Deploy**
-
-Push to `master` — Vercel deploys automatically. You can also trigger a manual deployment from the Vercel dashboard.
-
-### Free Tier Constraints
-
-| Service | Limit | Impact |
-|---|---|---|
-| Gemini API (free tier) | 20 requests / day | Hard cap enforced via Upstash Redis global bucket |
-| Vercel Serverless Functions | 10s execution timeout | PDF processing is async + fire-and-forget |
-| Supabase | Auto-pauses after inactivity | Cold-start latency on first request; Prisma handles reconnect |
-| Upstash Redis | 10,000 requests / day | Rate-limit checks are the only Redis calls |
+- [ ] `NEXTAUTH_URL` is set to the correct production URL
+- [ ] Google OAuth 2.0 **Authorized redirect URIs** includes `https://your-domain.vercel.app/api/auth/callback/google`
+- [ ] Supabase `DATABASE_URL` and `DIRECT_URL` are configured in Vercel environment variables
+- [ ] `pgvector` extension is enabled on your Supabase instance
+- [ ] Upstash Redis credentials are set for production rate limiting
 
 ---
 
 ## 🤝 Contributing
 
-Contributions, issues, and feature requests are welcome. Please check the [issues page](https://github.com/pavandeveloperr/mediQuery/issues) before opening a new one.
+Contributions are welcome. To contribute:
 
-```bash
-# Create a feature branch
-git checkout -b feature/your-feature-name
+- Fork the repository
+- Create a feature branch: `git checkout -b feature/your-feature-name`
+- Commit your changes: `git commit -m 'feat: add your feature'`
+- Push to your branch: `git push origin feature/your-feature-name`
+- Open a Pull Request against `master`
 
-# Commit with conventional commits
-git commit -m "feat: your feature description"
-
-# Open a pull request against master
-```
+Please ensure `npm run lint` and `npm run build` pass before submitting.
 
 ---
 
 ## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
 
 ---
 
 <div align="center">
-
-Built by [Pavan Kulkarni](https://github.com/pavandeveloperr) · Powered by Gemini · Deployed on Vercel
-
+  <sub>Built with ❤️ by <a href="https://github.com/pavandeveloperr">Pavan Kulkarni</a></sub>
 </div>
-```
